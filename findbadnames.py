@@ -22,11 +22,11 @@ BAD_NAMES_COUNT = 0
 def levenshtein(seq1, seq2):
     size_x = len(seq1) + 1
     size_y = len(seq2) + 1
-    matrix = np.zeros ((size_x, size_y))
+    matrix = np.zeros((size_x, size_y))
     for x in range(size_x):
-        matrix [x, 0] = x
+        matrix[x, 0] = x
     for y in range(size_y):
-        matrix [0, y] = y
+        matrix[0, y] = y
 
     for x in range(1, size_x):
         for y in range(1, size_y):
