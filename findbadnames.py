@@ -11,6 +11,9 @@ import glob
 import numpy as np
 from time import sleep
 
+# This has false positives if the songs are numbered (i.e. Part 1/Part 2 or  No. I/No. II in title)
+CHECK_MISSPELLINGS=False
+
 if len(sys.argv) != 2:
     print('Usage: '+sys.argv[0]+' <path>')
     sys.exit(-1)
@@ -50,7 +53,7 @@ def existsDupe(path):
     songname = basepath.rsplit('.', 1)[0].lower()
     try:
         for entry in os.listdir(dirpath):
-            if not os.path.isfile(entry):
+            if not os.path.isfile(os.path.join(dirpath, entry)):
                 continue
             if entry == basepath:
                 continue
@@ -61,8 +64,7 @@ def existsDupe(path):
                     print('> DELETING DUPLICATE MP3: '+path)
                     os.remove(path)
                 return True
-            if levenshtein(songname, entry_songname) < 2:
-                # This has false positives if the songs are numbered (i.e. Part 1/Part 2 or  No. I/No. II in title)
+            if CHECK_MISSPELLINGS and levenshtein(songname, entry_songname) < 2:
                 print('possible_duplicate_misspelling: '+path+' /// '+entry)
                 return True
     except Exception as e:
