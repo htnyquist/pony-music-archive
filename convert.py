@@ -55,7 +55,7 @@ def convertToOpus(convertItem):
         escapedDstPath = "'"+dstPath.replace("'", "'\\''")+".part'"
 
         coverPath = os.path.join(TMP_DIR, str(random.randint(0, 2**64))+'.png')
-        coverCmd = 'ffmpeg -i '+escapedSrcPath+' -an -vcodec copy 2> /dev/null '+coverPath+' && file -b --mime-type '+coverPath
+        coverCmd = 'ffmpeg -i '+escapedSrcPath+' -an -c:v copy 2> /dev/null '+coverPath+' && file -b --mime-type '+coverPath
         convCmd = ''
         try:
             coverMimetype = subprocess.check_output(["sh", "-c", coverCmd]).decode().strip()
