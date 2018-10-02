@@ -11,11 +11,11 @@ from time import sleep
 
 API_TRACK = "https://pony.fm/api/web/tracks/"
 SRC_FORMATS = [{"name": "FLAC", "ext": "flac"}, {"name": "MP3", "ext": "mp3"}]
-DL_QUEUE_SIZE = 50
-CONV_QUEUE_SIZE = 25
+DL_QUEUE_SIZE = 10
+CONV_QUEUE_SIZE = 10
 CONVERT_TO_OPUS = False
 NUM_CONVERSION_THREADS = 0
-NUM_DOWNLOAD_THREADS = 8
+NUM_DOWNLOAD_THREADS = 5
 
 if len(sys.argv) < 2:
     print('Usage: '+sys.argv[0]+' <data dir>')
