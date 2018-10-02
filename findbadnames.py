@@ -95,7 +95,7 @@ def showError(errorName, path):
     return False
 
 def commonChecks(srcPath, baseName, baseFileName):
-    for c in "><:?*|\\":
+    for c in "><:?*|\"\\":
         if c in baseName:
             return showError('bad_character', srcPath)
     if baseName.startswith('.'):
