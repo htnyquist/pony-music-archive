@@ -14,13 +14,14 @@ import tempfile
 import shutil
 from time import sleep
 
-videos = []
+tracks = []
 localFiles = []
 
 TMPDIR=tempfile.mkdtemp(prefix='ponyfm-dlcoverart-tmp')
 CMD_HAS_COVER = 'ffprobe 2>/dev/null -show_streams '
-CMD_DOWNLOAD = 'youtube-dl --write-thumbnail --skip-download -o '+os.path.join(TMPDIR, 'coverpre.jpg')+' '
-CMD_CROP = 'convert '+os.path.join(TMPDIR, 'coverpre.jpg')+' -fuzz 5% -trim '+os.path.join(TMPDIR, 'cover.jpg')
+CMD_YT_DOWNLOAD = 'youtube-dl --write-thumbnail --skip-download -o '+os.path.join(TMPDIR, 'coverpre.jpg')+' '
+CMD_YT_CROP = 'convert '+os.path.join(TMPDIR, 'coverpre.jpg')+' -fuzz 5% -trim '+os.path.join(TMPDIR, 'cover.jpg')
+CMD_BC_DOWNLOAD = 'curl 2>/dev/null -o '+os.path.join(TMPDIR, 'cover.jpg')+' '
 CMD_CVT_MP3_1 = 'ffmpeg 2>/dev/null -y -map 0 -map 1 -map_metadata 1 -c:a copy -c:v copy '+os.path.join(TMPDIR, 'tmpsong.mp3')+' -i '+os.path.join(TMPDIR, 'cover.jpg')+' -i '
 CMD_CVT_MP3_2 = 'mv '+os.path.join(TMPDIR, 'tmpsong.mp3')+' '
 CMD_CVT_FLAC = 'metaflac --import-picture-from='+os.path.join(TMPDIR, 'cover.jpg')+' '
@@ -82,11 +83,18 @@ def hasCoverArt(filePath):
         print(e)
         return True
 
-def downloadCoverArt(video):
+def downloadCoverArt(track):
     try:
-        subprocess.check_output(CMD_DOWNLOAD+'"'+VIDEO_BASE_URL+video['id']+'"', shell=True)
-        subprocess.check_output(CMD_CROP, shell=True)
-        return True
+        if track['type'] == 'youtube':
+            subprocess.check_output(CMD_YT_DOWNLOAD+'"'+VIDEO_BASE_URL+track['id']+'"', shell=True)
+            subprocess.check_output(CMD_YT_CROP, shell=True)
+            return True
+        elif track['type'] == 'bandcamp':
+            subprocess.check_output(CMD_BC_DOWNLOAD+'"'+track['artUrl']+'"', shell=True)            
+            return True
+        else:
+            print('Unknown track type! ('+track['type']+')')
+            sys.exit(-1)
     except Exception as e:
         print('Failed to download cover art !')
         print(e)
@@ -108,47 +116,120 @@ def addCoverArt(localFile):
         print('Failed to add cover art for '+songPath+' !')
         print(e)
 
-def processMatchingVideo(video, localFile):
+def processMatchingTrack(track, localFile):
     localPath = localFile['path']
     baseName = localFile['baseName']
     if hasCoverArt(localPath):
         print('Already have cover art for '+baseName)
         return
     print('Downloading cover art for '+baseName)
-    if not downloadCoverArt(video):
+    if not downloadCoverArt(track):
         return
     addCoverArt(localFile)        
 
-def findMatch(localFile, videos):
-    for video in videos:
-        videoTitleElems = [video['fullTitle']] + video['fullTitle'].split('-') + video['fullTitle'].split('~')
+def findMatch(localFile, tracks):
+    for track in tracks:
+        videoTitleElems = [track['fullTitle']] + track['fullTitle'].split('-') + track['fullTitle'].split('~')
         for videoTitleElem in videoTitleElems:
             canonFragment = removeFeats(canonicalizeTitle(videoTitleElem)).strip()
             if canonFragment == localFile['canonTitle']:
-                processMatchingVideo(video, localFile)
-                return
-    print('No matching video found for '+localFile['baseName'])
+                processMatchingTrack(track, localFile)
+                return True
+    return False
+
+def listYoutubeVideos(url):
+    print('Getting channel videos list...')
+    ytVideos = []
+    try:
+        output = subprocess.check_output(LIST_VIDEOS_CMD+'"'+webUrl+'" || true', shell=True).decode()
+        for line in output.split('\n'):
+            elems = line.split(' ', 1)
+            if len(elems) == 2:
+                ytVideos.append({
+                    'type': 'youtube',
+                    'id': elems[0],
+                    'fullTitle': elems[1],
+                    'canonTitle': canonicalizeTitle(elems[1])
+                })
+        return ytVideos
+    except Exception as e:
+        print('Failed to channel video list')
+        print(e)
+        sys.exit(-1)
+
+def getBandcampAlbumTitles(albumUrl):
+    html = urllib.request.urlopen(albumUrl).read().decode('utf-8')
+    titles = []
+    curpos = 0
+    while True:
+        curpos = html.find('<span itemprop="name">', curpos)
+        if curpos == -1:
+            break
+        curpos += len('<span itemprop="name">')
+        titles.append(html[curpos:html.find('<', curpos)])
+    return titles
+
+def listBandcampTracks(url):
+    print('Getting track list...')
+    baseUrl = url.replace('/music', '')
+    trackList = []
+    html = urllib.request.urlopen(url).read().decode('utf-8')
+    curpos = 0
+    while True:
+        curpos = html.find('href="/', curpos)
+        if curpos == -1:
+            break
+        curpos += len('href="')
+        linkUrl = html[curpos:html.find('"', curpos)]
+        trackTitles = []
+        if linkUrl.startswith('/track'):
+            titlePos = html.find('class="title">', curpos) + len('class="title">')
+            if titlePos == -1:
+                print('Failed to get title of track '+linkUrl)
+                continue
+            title = html[titlePos:html.find('<', titlePos)].strip()
+            trackTitles.append(title)
+        elif linkUrl.startswith('/album'):
+            trackTitles.extend(getBandcampAlbumTitles(baseUrl+linkUrl))
+        else:
+            continue
+        
+        artClassPos = html.find('class="art', curpos)
+        if artClassPos == -1:
+            print('Failed to find album art tag! Is our cheap-ass parser broken?')
+            sys.exit(-1)
+        curpos = artClassPos + len('class="art')
+        if html[curpos:curpos+6] == ' empty':
+            print('No album art for '+linkUrl)
+            continue
+        artUrlPos = html.find('src="', curpos) + len('src="')
+        artUrl = html[artUrlPos:html.find('"', artUrlPos)]
+        if artUrl == '/img/0.gif':
+            # Lazy loading
+            artUrlPos = html.find('data-original="', curpos) + len('data-original="')
+            artUrl = html[artUrlPos:html.find('"', artUrlPos)]
+        
+        for title in trackTitles:
+            trackList.append({
+                'type': 'bandcamp',
+                'fullTitle': title,
+                'canonTitle': canonicalizeTitle(title),
+                'artUrl': artUrl,
+            })
+    return trackList
 
 if len(sys.argv) != 2:
     print('Usage: '+sys.argv[0]+' <path>')
     sys.exit(-1)
 srcDir = sys.argv[1]
-channelUrl = input('Channel URL: ')
+webUrl = input('Channel or Bandcamp URL: ')
 
-print('Getting channel videos list...')
-try:
-    output = subprocess.check_output(LIST_VIDEOS_CMD+'"'+channelUrl+'" || true', shell=True).decode()
-    for line in output.split('\n'):
-        elems = line.split(' ', 1)
-        if len(elems) == 2:
-            videos.append({
-                'id': elems[0],
-                'fullTitle': elems[1],
-                'canonTitle': canonicalizeTitle(elems[1])
-            })
-except Exception as e:
-    print('Failed to channel video list')
-    print(e)
+if 'www.youtube.com/' in webUrl:
+    tracks = listYoutubeVideos(webUrl)
+elif '.bandcamp.com/' in webUrl:
+    tracks = listBandcampTracks(webUrl)
+else:
+    print('Invalid URL. Only Youtube and Bandcamp are supported.')
     sys.exit(-1)
 
 for pathit in glob.iglob(srcDir+'/**', recursive=True):
@@ -165,7 +246,12 @@ for pathit in glob.iglob(srcDir+'/**', recursive=True):
         'canonTitle': canonTitle,
     })
 
+noMatchCount = 0
 for localFile in localFiles:
-    findMatch(localFile, videos)
+    if not findMatch(localFile, tracks):
+        noMatchCount += 1
+
+if noMatchCount != 0:
+    print('No match found for '+str(noMatchCount)+' local files')
 
 shutil.rmtree(TMPDIR, ignore_errors=True)
