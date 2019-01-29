@@ -38,6 +38,13 @@ Will auto-crop the cover art to remove any black bars and apply it to the songs.
 
 Usage: `dlcoverart.py <artist folder>` then input the Youtube channel when prompted.
 
+## dlbandcamp.py
+
+Downloads an artist's entire discography from Bandcamp in free stream-quality MP3.
+This is useful only for tracks that are too expensive to purchase (or if no one likes the damn album).
+
+Usage: `dlbandcamp.py <path> <bandcamp artist URL>`
+
 ## findbadnames.py
 
 Looks through every folder and files in the archive for incorrect names.

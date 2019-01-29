@@ -1,0 +1,1 @@
+{'--album': None, '--artist': None, '--base-dir': None, '--debug': False, '--embed-art': False, '--embed-lyrics': False, '--full-album': False, '--group': False, '--help': False, '--no-art': False, '--no-slugify': False, '--overwrite': False, '--template': '%{artist}/%{album}/%{track} - %{title}', '--track': None, '--version': False, 'URL': None}
