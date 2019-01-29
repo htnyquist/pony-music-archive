@@ -83,7 +83,7 @@ def checkFolderDupes(path):
                 continue
             entryReducedName = entry.replace(' ', '').replace('.', '').lower()
             if entryReducedName == reducedName:
-                return showError('duplicate_folder_reduced_name: '+path+' /// '+entry)
+                return showError('duplicate_folder_reduced_name', path+' /// '+entry)
     except Exception as e:
         print(e)
     return True
@@ -107,6 +107,8 @@ def commonChecks(srcPath, baseName, baseFileName):
     return True
 
 def folderChecks(srcPath, baseName, baseFileName):
+    if srcPath.endswith('.'):
+        return showError('dot_at_end', srcPath)
     if srcPath.endswith('Archive'):
         return showError('archive_artist', srcPath)
     if 'audiotool.com' in srcPath:
