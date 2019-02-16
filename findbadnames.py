@@ -88,6 +88,11 @@ def checkFolderDupes(path):
         print(e)
     return True
 
+def normalize_name(name):
+    for c in '[](){}':
+        name = name.replace(c, '')
+    return name.lower()
+
 def showError(errorName, path):
     global BAD_NAMES_COUNT
     BAD_NAMES_COUNT += 1
@@ -123,7 +128,13 @@ def fileChecks(srcPath, baseName, baseFileName):
     if not (srcPath.endswith('.mp3') or srcPath.endswith('.flac') or srcPath.endswith('.opus')):
         return showError('unexpected_extension', srcPath)
 
-    if baseName.replace('[', '').replace('(', '').replace('{', '').lower().startswith('bonus track'):
+    if srcPath.endswith('.wav.flac'):
+        showError('ends_in_.wav.flac', srcPath)
+        fixedPath = srcPath[:-9]+'.flac'
+        os.rename(srcPath, fixedPath)
+        print('> AUTO-CORRECT .wav.flac: '+fixedPath)
+
+    if normalize_name(baseFileName).startswith('bonus track') and normalize_name(baseFileName) != 'bonus track':
         return showError('startswith_bonus_track', srcPath)
 
     if baseFileName.startswith(os.path.basename(os.path.dirname(srcPath))+' -'):
