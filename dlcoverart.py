@@ -12,6 +12,7 @@ import re
 import random
 import tempfile
 import shutil
+import soundcloud
 from time import sleep
 
 tracks = []
@@ -21,12 +22,13 @@ TMPDIR=tempfile.mkdtemp(prefix='ponyfm-dlcoverart-tmp')
 CMD_HAS_COVER = 'ffprobe 2>/dev/null -show_streams '
 CMD_YT_DOWNLOAD = 'youtube-dl --write-thumbnail --skip-download -o '+os.path.join(TMPDIR, 'coverpre.jpg')+' '
 CMD_YT_CROP = 'convert '+os.path.join(TMPDIR, 'coverpre.jpg')+' -fuzz 5% -trim '+os.path.join(TMPDIR, 'cover.jpg')
-CMD_BC_DOWNLOAD = 'curl 2>/dev/null -o '+os.path.join(TMPDIR, 'cover.jpg')+' '
+CMD_GENERIC_DOWNLOAD = 'curl 2>/dev/null -o '+os.path.join(TMPDIR, 'cover.jpg')+' '
 CMD_CVT_MP3_1 = 'ffmpeg 2>/dev/null -y -map 0 -map 1 -map_metadata 1 -c:a copy -c:v copy '+os.path.join(TMPDIR, 'tmpsong.mp3')+' -i '+os.path.join(TMPDIR, 'cover.jpg')+' -i '
 CMD_CVT_MP3_2 = 'mv '+os.path.join(TMPDIR, 'tmpsong.mp3')+' '
 CMD_CVT_FLAC = 'metaflac --import-picture-from='+os.path.join(TMPDIR, 'cover.jpg')+' '
 LIST_VIDEOS_CMD='youtube-dl --skip-download --youtube-skip-dash-manifest -i 2>/dev/null --get-filename -o "%(id)s %(title)s" '
 VIDEO_BASE_URL = 'https://www.youtube.com/watch?v='
+SOUNDCLOUD_BORROWED_CLIENT_ID = '91f71f725804f4915f4cc95f69fff503' # First result for a public token on Github search!
 
 def removeParens(title):
     depth = 0
@@ -89,8 +91,8 @@ def downloadCoverArt(track):
             subprocess.check_output(CMD_YT_DOWNLOAD+'"'+VIDEO_BASE_URL+track['id']+'"', shell=True)
             subprocess.check_output(CMD_YT_CROP, shell=True)
             return True
-        elif track['type'] == 'bandcamp':
-            subprocess.check_output(CMD_BC_DOWNLOAD+'"'+track['artUrl']+'"', shell=True)            
+        elif track['type'] == 'bandcamp' or track['type'] == 'soundcloud':
+            subprocess.check_output(CMD_GENERIC_DOWNLOAD+'"'+track['artUrl']+'"', shell=True)            
             return True
         else:
             print('Unknown track type! ('+track['type']+')')
@@ -170,7 +172,7 @@ def getBandcampAlbumTitles(albumUrl):
     return titles
 
 def listBandcampTracks(url):
-    print('Getting track list...')
+    print('Getting Bandcamp track list...')
     baseUrl = url.replace('/music', '')
     trackList = []
     html = urllib.request.urlopen(url).read().decode('utf-8')
@@ -218,18 +220,38 @@ def listBandcampTracks(url):
             })
     return trackList
 
+def listSoundcloudTracks(url):
+    print('Getting Soundcloud track list...')
+    trackList = []
+    client = soundcloud.Client(client_id=SOUNDCLOUD_BORROWED_CLIENT_ID)
+    user = client.get('/resolve', url=url)
+    tracks = client.get('/users/'+str(user.id)+'/tracks')
+    
+    for track in tracks:
+        title = track.title
+        trackList.append({
+            'type': 'soundcloud',
+            'fullTitle': title,
+            'canonTitle': canonicalizeTitle(title),
+            'artUrl': track.artwork_url,
+        })
+    
+    return trackList
+
 if len(sys.argv) != 2:
     print('Usage: '+sys.argv[0]+' <path>')
     sys.exit(-1)
 srcDir = sys.argv[1]
-webUrl = input('Channel or Bandcamp URL: ')
+webUrl = input('Track list URL: ')
 
 if 'www.youtube.com/' in webUrl:
     tracks = listYoutubeVideos(webUrl)
 elif '.bandcamp.com/' in webUrl:
     tracks = listBandcampTracks(webUrl)
+elif 'soundcloud.com/' in webUrl:
+    tracks = listSoundcloudTracks(webUrl)
 else:
-    print('Invalid URL. Only Youtube and Bandcamp are supported.')
+    print('Invalid URL. Youtube, Bandcamp and Soundcloud are supported.')
     sys.exit(-1)
 
 for pathit in glob.iglob(srcDir+'/**', recursive=True):

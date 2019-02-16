@@ -33,7 +33,7 @@ Usage: `convert.py <source> <destination>`
 
 ## dlcoverart.py
 
-Tries to find album art on an artist's Bandcamp page or Youtube channel matching their songs in the music archive.
+Tries to find album art on an artist's Bandcamp, Soundcloud, or Youtube channel that matches their songs in the music archive.
 Will auto-crop the cover art to remove any black bars (for Youtube) and apply it to the songs.
 
 This tries pretty hard to guess when slightly different titles are the same song, so these are all recognized as the same track:
@@ -41,7 +41,7 @@ This tries pretty hard to guess when slightly different titles are the same song
 - MLP-FiM: Hot mixtape! {12 SUB SPECIAL}
 - The Hot Mixtape Album - hot mixtape feat. realperson12 & friends
 
-Usage: `dlcoverart.py <artist folder>` then input the Bandcamp URL or Youtube channel when prompted.
+Usage: `dlcoverart.py <artist folder>` then input the track list URL when prompted.
 
 ## dlbandcamp.py
 
