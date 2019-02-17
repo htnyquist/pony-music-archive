@@ -50,6 +50,14 @@ This is useful only for tracks that are too expensive to purchase (or if no one 
 
 Usage: `dlbandcamp.py <path> <bandcamp artist URL>`
 
+## dlsoundcloud.py
+
+Downloads an artist's tracks from Soundcloud in either original quality (if Download is available), or stream-quality MP3.
+This will not overwrite existing files, but it will try to apply Soundcloud's cover art if the name matches.
+For arists who do not have a Bandcamp.
+
+Usage: `dlsoundcloud.py <path> <soundcloud artist URL>`
+
 ## findbadnames.py
 
 Looks through every folder and files in the archive for incorrect names.
