@@ -60,19 +60,20 @@ def addCoverArt(songPath):
         print('Failed to add cover art for '+songPath+' !')
         print(e)
 
-def listSoundcloudTracks(client, userId):
+def listSoundcloudTracks(client, user):
     print('Getting Soundcloud track list...')
     trackList = []
     
-    tracks = client.get('/users/'+str(userId)+'/tracks')
+    tracks = client.get('/users/'+str(user.id)+'/tracks')
     
     for track in tracks:
         title = track.title
         dlUrl = track.download_url if track.downloadable else track.stream_url
+        artUrl = track.artwork_url or user.avatar_url
         trackList.append({
             'type': 'soundcloud',
             'fullTitle': title,
-            'artUrl': track.artwork_url,
+            'artUrl': artUrl,
             'downloadUrl': dlUrl,
             'streamUrl': track.stream_url,
         })
@@ -90,11 +91,15 @@ def downloadTrack(downloadUrl):
     disp = reply.getheader('Content-Disposition')
     filename = track['fullTitle']+'.mp3'
     if not disp is None:
-        filename = disp[disp.find('"')+1:disp.rfind('"')].replace('/', '-')
+        filename = disp[disp.find('"')+1:disp.rfind('"')]
+    filename = filename.replace('/', '-')
     if filename.startswith(artistName+' - '):
         filename = filename[len(artistName+' - '):]
     
-    targetFilename = filename[:-4] + '.flac' if filename.endswith('.wav') else filename
+    flacFilename = baseFileName = os.path.basename(filename).rsplit('.', 1)[0] + '.flac'
+    targetFilename = filename
+    if filename.endswith('.wav') or os.path.exists(flacFilename):
+        targetFilename = flacFilename
     if os.path.exists(targetFilename):
         print('File "'+targetFilename+'" already exists, skipping download')
     else:
@@ -123,7 +128,7 @@ if not 'soundcloud.com/' in webUrl:
 client = soundcloud.Client(client_id=SOUNDCLOUD_BORROWED_CLIENT_ID)
 user = client.get('/resolve', url=webUrl)
 artistName = user.username
-tracks = listSoundcloudTracks(client, user.id)
+tracks = listSoundcloudTracks(client, user)
 
 for track in tracks:
     try:
