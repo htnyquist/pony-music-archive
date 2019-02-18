@@ -1,0 +1,5 @@
+# Clean files in an album from Bandcamp:
+for f in (*.{png,jpg,txt,pdf})(N); do rm $f; done; for f in (*.{flac,mp3})(N); do mv "$f" "`echo $f | sed 's/.* - [0-9]\+ //'`"; done 
+
+# Remove leading artist name from songs
+for m in (*.{flac,mp3})(N); do t=$(echo $m | sed "s/^$(basename $PWD) - //"); mv "$m" "$t"; done
