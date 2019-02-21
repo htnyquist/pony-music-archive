@@ -1,7 +1,7 @@
-# Pony.fm Music Archive scripts
+# Pony Music Archive scripts
 
-This is a collection of short scripts and helpful tools used to manage the Pony.fm Music Archive, a collection of music over 500GB in size.
-The archive is released every 6 months as a raw torrent, and a transcoded opus torrent. 
+This is a collection of short scripts and helpful tools used to manage the Pony Music Archive, a collection of music over 600GB in size.
+The archive is released every 6 months as torrents for the raw and different transcode qualities.
 
 These tools help automate tasks like downloading new songs and album art, converting the archive to Opus, finding duplicates and naming issues, and looking for corrupt or low-quality tracks.
 While those scripts are fully functional, they're primarily written to work on the author's purposes, so expect some lack of polish here and there!
