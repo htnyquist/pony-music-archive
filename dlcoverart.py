@@ -13,6 +13,7 @@ import random
 import tempfile
 import shutil
 import soundcloud
+from html import unescape
 from time import sleep
 
 tracks = []
@@ -168,7 +169,7 @@ def getBandcampAlbumTitles(albumUrl):
         if curpos == -1:
             break
         curpos += len('<span itemprop="name">')
-        titles.append(html[curpos:html.find('<', curpos)])
+        titles.append(unescape(html[curpos:html.find('<', curpos)]))
     return titles
 
 def listBandcampTracks(url):
@@ -189,7 +190,7 @@ def listBandcampTracks(url):
             if titlePos == -1:
                 print('Failed to get title of track '+linkUrl)
                 continue
-            title = html[titlePos:html.find('<', titlePos)].strip()
+            title = unescape(html[titlePos:html.find('<', titlePos)].strip())
             trackTitles.append(title)
         elif linkUrl.startswith('/album'):
             trackTitles.extend(getBandcampAlbumTitles(baseUrl+linkUrl))
