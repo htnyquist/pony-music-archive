@@ -18,13 +18,6 @@ Note that not all scripts need all these dependencies, but if you run into any p
 - `opusenc` (converting songs to Opus)
 - Basic unix tools: `grep`, `awk` and `file` (misc processing)
 
-## scrape.py
-
-Downloads songs from Pony.fm, in either FLAC or MP3.
-Optionally converts songs to Opus on the fly (this feature is deprecated, use the convert.py script instead).
-
-Usage: `scrape.py <destination folder>`
-
 ## convert.py
 
 Converts a raw archive containing FLACs and MP3s to an Opus archive.
@@ -67,6 +60,20 @@ This is always run (and every problem fixed) before creating a torrent.
 
 Usage: `findbadnames.py <archive folder>`
 
+## scrape.py
+
+Downloads songs from Pony.fm, in either FLAC or MP3.
+Optionally converts songs to Opus on the fly (this feature is deprecated, use the convert.py script instead).
+
+Usage: `scrape.py <destination folder>`
+
+## process_eqbeats.py
+
+This script was used to conver the EQ Beats archive into a format and layout compatible with the Pony Music Archive, to help with semi-automatic importing of music and cover art.
+Due to some surprises in the EQ Beats archive data (truncated file names, MP4 videos passing as .mp3 files, or Paint.NET projects pretending to be a PNG) some manual intervention is necessary to handle the few edge cases, but otherwise the process is automated.
+
+Usage: `process_eqbeats.py` in the root folder of the eqbeats archive.
+
 ## findbitrate.py
 
 Reads through every song in the archive to find tracks under a minimum bitrate.
@@ -87,3 +94,4 @@ Reads through every song in the archive and reports tracks that FFmpeg doesn't l
 Very basic script and thoroughly prone to false positives for the time being.
 
 Usage: `findcorrupt.py <archive folder>`
+
