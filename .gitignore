@@ -1,0 +1,3 @@
+chromaprint_matcher/.*
+chromaprint_matcher/Cargo.lock
+chromaprint_matcher/target

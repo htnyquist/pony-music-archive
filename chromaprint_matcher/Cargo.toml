@@ -1,0 +1,9 @@
+[package]
+name = "chromaprint_matcher"
+version = "0.1.0"
+authors = ["H.T. Nyquist <htnyquist@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rayon = "1.0"
+chromaprint = "0.1.2"
