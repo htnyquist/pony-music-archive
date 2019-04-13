@@ -3,3 +3,12 @@ for f in (*.{png,jpg,txt,pdf})(N); do rm $f; done; for f in (*.{flac,mp3})(N); d
 
 # Remove leading artist name from songs
 for m in (*.{flac,mp3})(N); do t=$(echo $m | sed "s/^$(basename $PWD) - //"); mv "$m" "$t"; done
+
+# Convert all wavs to flacs
+for w in (*.wav)(N); do t=$(echo $w | sed 's/\.wav$/.flac/'); ffmpeg -i "$w" "$t"; done
+
+# Remove some pattern
+for h in *; do t=`echo "$h" | sed "s/THEPATTERNHERE//"`; mv "$h" "$t"; done
+
+# Convert m4a (aac) to mp3
+for a in (*.m4a)(N); do t=$(echo $a | sed 's/\.m4a$/.mp3/'); ffmpeg -i "$a" -q:a 3 "$t"; done
