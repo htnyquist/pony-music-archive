@@ -16,15 +16,21 @@ Note that not all scripts need all these dependencies, but if you run into any p
 - `convert` utility from ImageMagick (auto-cropping the cover art)
 - `metaflac` (adding cover art to FLACs)
 - `opusenc` (converting songs to Opus)
+- The `sqlite3` and `acoustid` Python3 packages to build the song database
+- An `audioread` package built from Git master, due to a crippling memory leak in the last release (2.1.6)...
 - Basic unix tools: `grep`, `awk` and `file` (misc processing)
 
-## convert.py
+## Release scripts
+
+### convert.py
 
 Converts a raw archive containing FLACs and MP3s to an Opus archive.
 
 Usage: `convert.py <source> <destination>`
 
-## dlcoverart.py
+## Content download
+
+### dlcoverart.py
 
 Tries to find album art on an artist's Bandcamp, Soundcloud, or Youtube channel that matches their songs in the music archive.
 Will auto-crop the cover art to remove any black bars (for Youtube) and apply it to the songs.
@@ -36,14 +42,14 @@ This tries pretty hard to guess when slightly different titles are the same song
 
 Usage: `dlcoverart.py <artist folder>` then input the track list URL when prompted.
 
-## dlbandcamp.py
+### dlbandcamp.py
 
 Downloads an artist's entire discography from Bandcamp in free stream-quality MP3.
 This is useful only for tracks that are too expensive to purchase (or if no one likes the damn album).
 
 Usage: `dlbandcamp.py <path> <bandcamp artist URL>`
 
-## dlsoundcloud.py
+### dlsoundcloud.py
 
 Downloads an artist's tracks from Soundcloud in either original quality (if Download is available), or stream-quality MP3.
 This will not overwrite existing files, but it will try to apply Soundcloud's cover art if the name matches.
@@ -51,7 +57,16 @@ For arists who do not have a Bandcamp.
 
 Usage: `dlsoundcloud.py <path> <soundcloud artist URL>`
 
-## findbadnames.py
+### scrape.py
+
+Downloads songs from Pony.fm, in either FLAC or MP3.
+Optionally converts songs to Opus on the fly (this feature is deprecated, use the convert.py script instead).
+
+Usage: `scrape.py <destination folder>`
+
+## Maintenance scripts
+
+### findbadnames.py
 
 Looks through every folder and files in the archive for incorrect names.
 This script tries to find a wide variety of problems such as duplicate songs or artists, using characters that are invalid on Windows (no `/)^(\.mp3` is not a good song name, looking at you General Mumble...), files that are not music (often a forgotten "cover.png" or "Thanks for buying my album.txt"), files that start or end with a blank space, and several other common issues.
@@ -60,38 +75,44 @@ This is always run (and every problem fixed) before creating a torrent.
 
 Usage: `findbadnames.py <archive folder>`
 
-## scrape.py
 
-Downloads songs from Pony.fm, in either FLAC or MP3.
-Optionally converts songs to Opus on the fly (this feature is deprecated, use the convert.py script instead).
-
-Usage: `scrape.py <destination folder>`
-
-## process_eqbeats.py
-
-This script was used to conver the EQ Beats archive into a format and layout compatible with the Pony Music Archive, to help with semi-automatic importing of music and cover art.
-Due to some surprises in the EQ Beats archive data (truncated file names, MP4 videos passing as .mp3 files, or Paint.NET projects pretending to be a PNG) some manual intervention is necessary to handle the few edge cases, but otherwise the process is automated.
-
-Usage: `process_eqbeats.py` in the root folder of the eqbeats archive.
-
-## findbitrate.py
+### findbitrate.py
 
 Reads through every song in the archive to find tracks under a minimum bitrate.
 This will generate a list of low quality songs that should be replaced with a better source, if any.
 
 Usage: `findbitrate.py <archive folder>`
 
-## findlength.py
+### findlength.py
 
 Largely useless and impressively slow. Will look for songs of a certain duration.
 I've needed this exactly once, probably no one ever will.
 
 Usage: `findlength.py <archive folder>`
 
-## findcorrupt.py
+### findcorrupt.py
 
 Reads through every song in the archive and reports tracks that FFmpeg doesn't like, either because they are hopelessly corrupt or because of some minor weirdness.
 Very basic script and thoroughly prone to false positives for the time being.
 
 Usage: `findcorrupt.py <archive folder>`
+
+## Song database, bulk merging & import
+
+### build_song_db.py
+
+Builds an SQLite database of songs from a Pony Music Archive-compatible Artists folder (aproximately 150MB for the latest Pony Music Archive).
+The DB keeps track of the artist, albums, format, duration, audio fingerprint (Chromaprint) and presence or absence of cover art for every song.
+We use this database to help automate bulk import and merging of other music archives.
+
+Creating the DB from scratch takes a couple hours (mostly for computing audio fingerprints), but the script will happily do incremental updates in a couple of seconds to track later changes.
+
+Usage: `build_song_db.py <PMA compatible Artists folder> <database file>`
+
+### process_eqbeats.py
+
+This script was used to conver the EQ Beats archive into a format and layout compatible with the Pony Music Archive, to help with semi-automatic importing of music and cover art.
+Due to some surprises in the EQ Beats archive data (truncated file names, MP4 videos passing as .mp3 files, or Paint.NET projects pretending to be a PNG) some manual intervention is necessary to handle the few edge cases, but otherwise the process is automated.
+
+Usage: `process_eqbeats.py` in the root folder of the eqbeats archive.
 
