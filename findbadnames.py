@@ -107,8 +107,10 @@ def commonChecks(srcPath, baseName, baseFileName):
         return showError('hidden_file', srcPath)
     if baseName.replace('[', '').replace('(', '').replace('{', '').lower().startswith('pony.fm exclusive'):
         return showError('startswith_ponyfm_exclusive', srcPath)
-    if baseName.startswith(' ') or baseName.endswith(' ') or srcPath.endswith(' '):
+    if baseName.startswith(' ') or baseName.endswith(' '):
         return showError('extra_blank_spaces', '"'+srcPath+'"')
+    if "\n" in baseName:
+        return showError('newline_in_name', srcPath)
     return True
 
 def folderChecks(srcPath, baseName, baseFileName):
@@ -127,6 +129,8 @@ def fileChecks(srcPath, baseName, baseFileName):
         return False
     if not (srcPath.endswith('.mp3') or srcPath.endswith('.flac') or srcPath.endswith('.opus')):
         return showError('unexpected_extension', srcPath)
+    if baseFileName.endswith(' '):
+        return showError('extra_blank_spaces', '"'+srcPath+'"')
 
     if srcPath.endswith('.wav.flac'):
         showError('ends_in_.wav.flac', srcPath)
@@ -136,9 +140,12 @@ def fileChecks(srcPath, baseName, baseFileName):
 
     if normalize_name(baseFileName).startswith('bonus track') and normalize_name(baseFileName) != 'bonus track':
         return showError('startswith_bonus_track', srcPath)
+    if 'free download' in baseFileName.lower():
+        return showError('free_download', srcPath)
 
-    if baseFileName.startswith(os.path.basename(os.path.dirname(srcPath))+' -'):
-        return showError('artist_in_filename', srcPath)
+    for dirname in os.path.dirname(srcPath).split(os.sep):
+        if baseFileName.startswith(dirname+' -') or baseFileName.endswith('- '+dirname):
+            return showError('dirname_in_filename', srcPath)
 
     if baseFileName.endswith('-'):
         showError('ends_with_dash', srcPath)
@@ -156,6 +163,13 @@ def fileChecks(srcPath, baseName, baseFileName):
 
     if '20- ' in baseName:
         return showError('twenty_percent_broken', srcPath)
+    for char in '([{':
+        if ' - '+char in baseFileName or ' -'+char in baseFileName or char+' - ' in baseFileName or char+'- ' in baseFileName:
+            showError('redundant_punctuation', srcPath)
+            fixedPath = root+'/'+baseName.replace(' - '+char, ' '+char).replace(' -'+char, ' '+char).replace(char+' - ', char+' ').replace(char+'- ', char+' ')
+            print('> AUTO-CORRECTING TO: '+fixedPath)
+            os.rename(srcPath, fixedPath)
+            break
 
     for elem in ['ft.', 'ft', 'feat.', 'feat']:
         if ' - '+elem+' ' in baseName.lower():
