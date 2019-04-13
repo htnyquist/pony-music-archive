@@ -174,7 +174,7 @@ def getBandcampAlbumTitles(albumUrl):
 
 def listBandcampTracks(url):
     print('Getting Bandcamp track list...')
-    baseUrl = url.replace('/music', '')
+    baseUrl = url[:url.find('bandcamp.com/')+len('bandcamp.com/')]
     trackList = []
     html = urllib.request.urlopen(url).read().decode('utf-8')
     curpos = 0
@@ -197,19 +197,22 @@ def listBandcampTracks(url):
         else:
             continue
         
-        artClassPos = html.find('class="art', curpos)
+        artpos = curpos
+        artClassPos = html.find('class="art', artpos)
+        if artClassPos == -1:
+            artClassPos = html.find('id="tralbumArt', 0) # If we are already on an album page, this is the only cover art
         if artClassPos == -1:
             print('Failed to find album art tag! Is our cheap-ass parser broken?')
             sys.exit(-1)
-        curpos = artClassPos + len('class="art')
-        if html[curpos:curpos+6] == ' empty':
+        artpos = artClassPos + len('class="art')
+        if html[artpos:artpos+6] == ' empty':
             print('No album art for '+linkUrl)
             continue
-        artUrlPos = html.find('src="', curpos) + len('src="')
+        artUrlPos = html.find('src="', artpos) + len('src="')
         artUrl = html[artUrlPos:html.find('"', artUrlPos)]
         if artUrl == '/img/0.gif':
             # Lazy loading
-            artUrlPos = html.find('data-original="', curpos) + len('data-original="')
+            artUrlPos = html.find('data-original="', artpos) + len('data-original="')
             artUrl = html[artUrlPos:html.find('"', artUrlPos)]
         
         for title in trackTitles:
