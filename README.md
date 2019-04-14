@@ -116,3 +116,16 @@ Due to some surprises in the EQ Beats archive data (truncated file names, MP4 vi
 
 Usage: `process_eqbeats.py` in the root folder of the eqbeats archive.
 
+### diff_song_db.py
+
+Matches songs between the Pony Music Archive and another collection to help automatically import music.
+
+The music archive to import must first be converted to a PMA-compatible layout, and then a song database has to be built so we can efficiently diff the contents.
+
+This uses the Chromaprint Matcher to compare songs. Start with a high matching threshold, then reduce progressively while watching for any false positives.
+Going below an 80% match is typically not worth it, there'll be too many false positives to sort through and few new legitimate matches.
+
+The -n flag shows what work would be done (importing cover art, replacing MP3s with matching FLACs), but doesn't actually perform any change.
+
+Usage: `diff_song_db.py <src_artists_dir> <src_song_db> <pma_artists_dir> <pma_song_db> [-n]`
+
