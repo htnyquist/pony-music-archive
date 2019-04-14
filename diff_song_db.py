@@ -40,14 +40,16 @@ def process_artist(artist, rows):
             process_song(artist, artist_path, albums_path, song_file)
 
 class Song:
-    def __init__(self, songs_root_path, artist, albums_path, song_title, song_format, duration, fingerprint, has_cover_art):
+    def __init__(self, songs_root_path, artist, albums_path, song_title, song_format, duration, bitrate, freq_cutoff, has_cover_art, fingerprint):
         self.artist = artist
         self.albums_path = albums_path
         self.title = song_title
         self.fmt = song_format
         self.duration = duration
-        self.fingerprint = fingerprint.decode('utf-8')
+        self.bitrate = bitrate
+        self.freq_cutoff = freq_cutoff
         self.has_cover_art = has_cover_art
+        self.fingerprint = fingerprint.decode('utf-8')
         self.rel_path = os.path.join(self.artist, self.albums_path, self.title+'.'+self.fmt)
         self.full_path = os.path.join(songs_root_path, self.artist, self.albums_path, self.title+'.'+self.fmt)
         self.match = None

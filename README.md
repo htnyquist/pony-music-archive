@@ -102,10 +102,10 @@ Usage: `findcorrupt.py <archive folder>`
 ### build_song_db.py
 
 Builds an SQLite database of songs from a Pony Music Archive-compatible Artists folder (aproximately 150MB for the latest Pony Music Archive).
-The DB keeps track of the artist, albums, format, duration, audio fingerprint (Chromaprint) and presence or absence of cover art for every song.
+The DB keeps track of metadata for each song: the artist, albums, format, duration, bitrate, estimated frequency cutoff, presence or absence of cover art, and audio fingerprint (Chromaprint).
 We use this database to help automate bulk import and merging of other music archives.
 
-Creating the DB from scratch takes a couple hours (mostly for computing audio fingerprints), but the script will happily do incremental updates in a couple of seconds to track later changes.
+Creating the DB from scratch takes a couple hours (mostly for computing audio fingerprints and frequency cutoff), but incremental updates rarely take more than a minute.
 
 Usage: `build_song_db.py <PMA compatible Artists folder> <database file>`
 
