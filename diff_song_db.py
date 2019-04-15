@@ -87,6 +87,18 @@ def update_dst_db_song_cover_art(song):
     db.commit()
     db.close()
 
+def update_dst_db_song_replaced(src_song, dst_song):
+    db = sqlite3.connect(TARGET_DB)
+    db.execute('UPDATE songs SET duration=?, bitrate=?, freq_cutoff=?, fingerprint=? WHERE artist==? AND albums_path==? AND title==? AND format==?',
+               [src_song.duration, src_song.bitrate, src_song.freq_cutoff, src_song.fingerprint.encode(), dst_song.artist, dst_song.albums_path, dst_song.title, dst_song.fmt])
+    db.commit()
+    db.close()
+    
+    dst_song.duration = src_song.duration
+    dst_song.bitrate = src_song.bitrate
+    dst_song.freq_cutoff = src_song.freq_cutoff
+    dst_song.fingerprint = src_song.fingerprint
+
 def remove_parens(title):
     depth = 0
     result = ''
@@ -163,6 +175,17 @@ def merge_best_of_songs(src_song, dst_song):
         if not src_song.has_cover_art and dst_song.has_cover_art:
             import_cover_art(dst_song.full_path, flac_path, 'flac')
         os.remove(dst_song.full_path)
+    elif src_song.fmt == 'mp3' and dst_song.fmt == 'mp3' and src_song.bitrate > dst_song.bitrate:
+        if src_song.freq_cutoff is not None and dst_song.freq_cutoff is not None and src_song.freq_cutoff + 100 < dst_song.freq_cutoff:
+            print(f'Source song is higher bitrate but appears to have lower frequency cutoff than target: {src_song.rel_path} --- {dst_song.rel_path}')
+        else:
+            print(f'> Replacing MP3 {dst_song.rel_path}, with higher bitrate source {src_song.rel_path}')
+            if check_read_only_mode():
+                return
+            tmp_path = dst_song.full_path+'.tmp.mp3'
+            subprocess.check_call('ffmpeg -f mp3 -y -map 0:a -map 1:v? -map_metadata 1 -c:a copy -c:v copy'.split()+[tmp_path, '-i', src_song.full_path, '-i', dst_song.full_path], stderr=subprocess.DEVNULL)
+            os.rename(tmp_path, dst_song.full_path)
+            update_dst_db_song_replaced(src_song, dst_song)
 
 def process_fingerprint_match(src_song, dst_song):
     dst_canon_title = canonicalize_title(dst_song.title)
