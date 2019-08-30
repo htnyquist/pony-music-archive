@@ -4,11 +4,11 @@ import os
 import sys
 import subprocess
 
-if len(sys.argv) < 3:
-    print('Usage: '+sys.argv[0]+' <output dir> <bandcamp artist URL>')
+if len(sys.argv) < 2:
+    print('Usage: '+sys.argv[0]+' <output dir>')
     sys.exit(-1)
 OUT_DIR = sys.argv[1]
-URL = sys.argv[2]
+URL = input('Bandcamp URL: ')
 
 fetchCmd = "curl 2>/dev/null "+URL+" | egrep 'href=\"/(track|album)/' | sed 's@.*\\(/[^/]\+/.*\\)\".*@\\1@'"
 titles = subprocess.check_output(["sh", "-c", fetchCmd]).decode().strip().split('\n')

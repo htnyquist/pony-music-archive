@@ -11,4 +11,10 @@ for w in (*.wav)(N); do t=$(echo $w | sed 's/\.wav$/.flac/'); ffmpeg -i "$w" "$t
 for h in *; do t=`echo "$h" | sed "s/THEPATTERNHERE//"`; mv "$h" "$t"; done
 
 # Convert m4a (aac) to mp3
-for a in (*.m4a)(N); do t=$(echo $a | sed 's/\.m4a$/.mp3/'); ffmpeg -i "$a" -q:a 3 "$t"; done
+for a in (*.m4a)(N); do t=$(echo $a | sed 's/\.m4a$/.mp3/'); ffmpeg -i "$a" -q:a 2 "$t"; done
+
+# Cheaply adding cover to mp3's, creating new files
+for t in (*.mp3)(N); do ffmpeg -f mp3 -y -map 0 -map 1 -map_metadata 1 -c:a copy -c:v copy "$t.cover.mp3" -i cover.jpg -i "$t"; done
+
+# Download YT channel or playlist and convert to MP3 V2
+youtube-dl -i -f bestaudio --extract-audio --audio-format mp3 --audio-quality 2 'https://www.youtube.com/channel/UC3DucZUZgJz17XDP7asUsjA/videos' -o '%(title)s.%(ext)s'

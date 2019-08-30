@@ -144,7 +144,7 @@ def listYoutubeVideos(url):
     print('Getting channel videos list...')
     ytVideos = []
     try:
-        output = subprocess.check_output(LIST_VIDEOS_CMD+'"'+webUrl+'" || true', shell=True).decode()
+        output = subprocess.check_output(LIST_VIDEOS_CMD+'"'+url+'" || true', shell=True).decode()
         for line in output.split('\n'):
             elems = line.split(' ', 1)
             if len(elems) == 2:
@@ -242,42 +242,46 @@ def listSoundcloudTracks(url):
     
     return trackList
 
-if len(sys.argv) != 2:
-    print('Usage: '+sys.argv[0]+' <path>')
-    sys.exit(-1)
-srcDir = sys.argv[1]
-webUrl = input('Track list URL: ')
+def dlCoverArt(srcDir, webUrl):
+	if 'www.youtube.com/' in webUrl:
+		tracks = listYoutubeVideos(webUrl)
+	elif '.bandcamp.com/' in webUrl:
+		tracks = listBandcampTracks(webUrl)
+	elif 'soundcloud.com/' in webUrl:
+		tracks = listSoundcloudTracks(webUrl)
+	else:
+		print('Invalid URL. Youtube, Bandcamp and Soundcloud are supported.')
+		sys.exit(-1)
 
-if 'www.youtube.com/' in webUrl:
-    tracks = listYoutubeVideos(webUrl)
-elif '.bandcamp.com/' in webUrl:
-    tracks = listBandcampTracks(webUrl)
-elif 'soundcloud.com/' in webUrl:
-    tracks = listSoundcloudTracks(webUrl)
-else:
-    print('Invalid URL. Youtube, Bandcamp and Soundcloud are supported.')
-    sys.exit(-1)
+	for pathit in glob.iglob(srcDir+'/**', recursive=True):
+		srcPath = str(pathit)
+		if not os.path.isfile(srcPath):
+			continue
 
-for pathit in glob.iglob(srcDir+'/**', recursive=True):
-    srcPath = str(pathit)
-    if not os.path.isfile(srcPath):
-        continue
+		baseName = os.path.basename(srcPath).rsplit('.', 1)[0]
+		canonTitle = canonicalizeTitle(baseName)
+		
+		localFiles.append({
+			'path': srcPath,
+			'baseName': baseName,
+			'canonTitle': canonTitle,
+		})
 
-    baseName = os.path.basename(srcPath).rsplit('.', 1)[0]
-    canonTitle = canonicalizeTitle(baseName)
-    
-    localFiles.append({
-        'path': srcPath,
-        'baseName': baseName,
-        'canonTitle': canonTitle,
-    })
+	noMatchCount = 0
+	for localFile in localFiles:
+		if not findMatch(localFile, tracks):
+			noMatchCount += 1
 
-noMatchCount = 0
-for localFile in localFiles:
-    if not findMatch(localFile, tracks):
-        noMatchCount += 1
+	if noMatchCount != 0:
+		print('No match found for '+str(noMatchCount)+' local files')
 
-if noMatchCount != 0:
-    print('No match found for '+str(noMatchCount)+' local files')
+	shutil.rmtree(TMPDIR, ignore_errors=True)
 
-shutil.rmtree(TMPDIR, ignore_errors=True)
+
+if __name__ == '__main__':
+	if len(sys.argv) != 2:
+		print('Usage: '+sys.argv[0]+' <path>')
+		sys.exit(-1)
+	srcDir = sys.argv[1]
+	webUrl = input('Track list URL: ')
+	dlCoverArt(srcDir, webUrl)

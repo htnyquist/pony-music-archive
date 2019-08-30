@@ -7,17 +7,17 @@ import re
 import sqlite3
 from time import sleep
 
-READONLY = False
+# NOTE: DO NOT set to False before checking that the chromaprint matcher is compiled with a very high threshold!
+READONLY = True
+SHOW_UNMATCHED = True
 
-if len(sys.argv) < 5:
-    print('Usage: '+sys.argv[0]+' <source dir> <source db> <target dir> <target db>')
+if len(sys.argv) < 3:
+    print('Usage: '+sys.argv[0]+' <imported db> <target db>')
     sys.exit(-1)
-SRC_DIR = sys.argv[1]
-SRC_DB = sys.argv[2]
-TARGET_DIR = sys.argv[3]
-TARGET_DB = sys.argv[4]
-if len(sys.argv) >= 6:
-    READONLY = sys.argv[5] == '-n'
+SRC_DB = sys.argv[1]
+TARGET_DB = sys.argv[2]
+if len(sys.argv) == 4 and sys.argv[3] == '-n':
+    READONLY = True
 
 def process_song(artist, artist_path, albums_path, song_filename):
     song_path = os.path.join(artist_path, albums_path, song_filename)
@@ -157,10 +157,13 @@ def import_cover_art(src_path, dst_path, dst_fmt):
         print(f"Couldn't add cover art to {dst_path}, unsupported file format {dst_fmt}!")
     os.remove(cover_path)
 
-def merge_best_of_songs(src_song, dst_song):    
+def merge_best_of_songs(titles_match, src_song, dst_song):    
     if not dst_song.has_cover_art and src_song.has_cover_art:
         print('> Importing cover art from '+src_song.rel_path+' to '+dst_song.rel_path)
         if check_read_only_mode():
+            return
+        if not titles_match:
+            print('Fingerprints match, but canon titles are different: '+src_song.rel_path+' --- '+dst_song.rel_path)
             return
         import_cover_art(src_song.full_path, dst_song.full_path, dst_song.fmt)
         dst_song.has_cover_art = True
@@ -170,17 +173,23 @@ def merge_best_of_songs(src_song, dst_song):
         print(f'> Replacing MP3 {dst_song.rel_path}, with FLAC version {src_song.rel_path}')
         if check_read_only_mode():
             return
+        if not titles_match:
+            print('Fingerprints match, but canon titles are different: '+src_song.rel_path+' --- '+dst_song.rel_path)
+            return
         flac_path = dst_song.full_path[:-3]+'flac'
         shutil.copy(src_song.full_path, flac_path)
         if not src_song.has_cover_art and dst_song.has_cover_art:
             import_cover_art(dst_song.full_path, flac_path, 'flac')
         os.remove(dst_song.full_path)
-    elif src_song.fmt == 'mp3' and dst_song.fmt == 'mp3' and src_song.bitrate > dst_song.bitrate:
+    elif src_song.fmt == 'mp3' and dst_song.fmt == 'mp3' and src_song.bitrate > dst_song.bitrate + 1000:
         if src_song.freq_cutoff is not None and dst_song.freq_cutoff is not None and src_song.freq_cutoff + 100 < dst_song.freq_cutoff:
             print(f'Source song is higher bitrate but appears to have lower frequency cutoff than target: {src_song.rel_path} --- {dst_song.rel_path}')
         else:
             print(f'> Replacing MP3 {dst_song.rel_path}, with higher bitrate source {src_song.rel_path}')
             if check_read_only_mode():
+                return
+            if not titles_match:
+                print('Fingerprints match, but canon titles are different: '+src_song.rel_path+' --- '+dst_song.rel_path)
                 return
             tmp_path = dst_song.full_path+'.tmp.mp3'
             subprocess.check_call('ffmpeg -f mp3 -y -map 0:a -map 1:v? -map_metadata 1 -c:a copy -c:v copy'.split()+[tmp_path, '-i', src_song.full_path, '-i', dst_song.full_path], stderr=subprocess.DEVNULL)
@@ -191,16 +200,16 @@ def process_fingerprint_match(src_song, dst_song):
     dst_canon_title = canonicalize_title(dst_song.title)
     
     src_title_elems = [src_song.title] + src_song.title.split('-')
+    titles_match = True
     if dst_song.title != src_song.title:
         for elem in src_title_elems:
             canon_fragment = remove_feats(canonicalize_title(elem)).strip()
             if canon_fragment == dst_canon_title:
                 break
         else:
-            print('Fingerprints match, but canon titles are different: '+src_song.rel_path+' --- '+dst_song.rel_path)
-            return
+            titles_match = False
     
-    merge_best_of_songs(src_song, dst_song)
+    merge_best_of_songs(titles_match, src_song, dst_song)
 
 print('Importing source database')
 src_fingerprints = import_songs(SRC_DB)
@@ -256,10 +265,11 @@ for artist in src_artists:
     
 print(f'Found {str(len(src_artists))} source artists, {str(len(src_artists_without_matches))} without any matches')
 
-for artist in src_artists:
-    if artist in src_artists_without_matches:
-        continue
-    songs = src_artists[artist]
-    for song in songs:
-        if song.match is None:
-            print(f'> Unmatched song to import: {song.rel_path}')
+if SHOW_UNMATCHED:
+    for artist in src_artists:
+        if artist in src_artists_without_matches:
+            continue
+        songs = src_artists[artist]
+        for song in songs:
+            if song.match is None:
+                print(f'> Unmatched song to import: {song.rel_path}')
