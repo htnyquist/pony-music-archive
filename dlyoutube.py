@@ -12,5 +12,8 @@ OUT_DIR = sys.argv[1]
 URL = input('Youtube URL: ')
 
 downloadCmd = "youtube-dl -i -f bestaudio --extract-audio --audio-format mp3 --audio-quality 2 -o '%(title)s.%(ext)s' '"+URL+"'"
-subprocess.check_output(["sh", "-c", downloadCmd]).decode().strip().split('\n')
+try:
+    subprocess.check_output(["sh", "-c", downloadCmd]).decode().strip().split('\n')
+except:
+    print('WARNING: Failed to download some songs!')
 dlcoverart.dlCoverArt(OUT_DIR, URL)

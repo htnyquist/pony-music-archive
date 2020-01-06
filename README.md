@@ -1,6 +1,6 @@
 # Pony Music Archive scripts
 
-This is a collection of short scripts and helpful tools used to manage the Pony Music Archive, a collection of music over 600GB in size.
+This is a collection of short scripts and helpful tools used to manage the Pony Music Archive, a collection of music over 700GB in size.
 The archive is released every 6 months as torrents for the raw and different transcode qualities.
 
 These tools help automate tasks like downloading new songs and album art, converting the archive to Opus, finding duplicates and naming issues, and looking for corrupt or low-quality tracks.
@@ -47,7 +47,7 @@ Usage: `dlcoverart.py <artist folder>` then input the track list URL when prompt
 Downloads an artist's entire discography from Bandcamp in free stream-quality MP3.
 This is useful only for tracks that are too expensive to purchase (or if no one likes the damn album).
 
-Usage: `dlbandcamp.py <path> <bandcamp artist URL>`
+Usage: `dlbandcamp.py <path>`
 
 ### dlsoundcloud.py
 
@@ -55,7 +55,7 @@ Downloads an artist's tracks from Soundcloud in either original quality (if Down
 This will not overwrite existing files, but it will try to apply Soundcloud's cover art if the name matches.
 For arists who do not have a Bandcamp.
 
-Usage: `dlsoundcloud.py <path> <soundcloud artist URL>`
+Usage: `dlsoundcloud.py <path>`
 
 ### scrape.py
 
@@ -127,5 +127,5 @@ Going below an 80% match is typically not worth it, there'll be too many false p
 
 The -n flag shows what work would be done (importing cover art, replacing MP3s with matching FLACs), but doesn't actually perform any change.
 
-Usage: `diff_song_db.py <src_artists_dir> <src_song_db> <pma_artists_dir> <pma_song_db> [-n]`
+Usage: `diff_song_db.py <src_song_db> <pma_song_db> [-n]`
 

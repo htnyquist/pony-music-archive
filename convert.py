@@ -26,8 +26,8 @@ if len(sys.argv) < 4:
     print('Usage: '+sys.argv[0]+' <quality> <src> <dst>')
     sys.exit(-1)
 BITRATE = BITRATES[sys.argv[1]]
-SRC_DIR = sys.argv[2]
-DST_DIR = sys.argv[3]
+SRC_DIR = sys.argv[2]+os.path.sep
+DST_DIR = sys.argv[3]+os.path.sep
 
 if SRC_DIR == DST_DIR:
     print('Source and destination probably shouldn\'t be equal...')
@@ -124,7 +124,7 @@ def createMetadataFlags(ffmpegMetadata):
 
 def runShellCmd(cmd):
     devnull=open(os.devnull)
-    output = subprocess.check_output(["sh", "-c", cmd], stdin=devnull).decode()
+    output = subprocess.check_output(["sh", "-c", cmd], stdin=devnull).decode('utf-8', 'ignore')
     devnull.close()
     return output
 
@@ -185,7 +185,7 @@ for pathit in glob.iglob(os.path.join(SRC_DIR, '**'), recursive=True):
         sleep(0.1)
 
     srcPath = str(pathit)
-    basepath = srcPath[len(SRC_DIR):].rsplit('.', 1)[0]
+    basepath = srcPath[len(SRC_DIR)-1:].rsplit('.', 1)[0]
     dstPath = DST_DIR + basepath + '.opus'
     if os.path.exists(dstPath) or not os.path.isfile(srcPath):
         continue

@@ -21,7 +21,7 @@ localFiles = []
 
 TMPDIR=tempfile.mkdtemp(prefix='ponyfm-dlcoverart-tmp')
 CMD_HAS_COVER = 'ffprobe 2>/dev/null -show_streams '
-CMD_YT_DOWNLOAD = 'youtube-dl --write-thumbnail --skip-download -o '+os.path.join(TMPDIR, 'coverpre.jpg')+' '
+CMD_YT_DOWNLOAD = 'youtube-dl -i --write-thumbnail --skip-download -o '+os.path.join(TMPDIR, 'coverpre.jpg')+' '
 CMD_YT_CROP = 'convert '+os.path.join(TMPDIR, 'coverpre.jpg')+' -fuzz 5% -trim '+os.path.join(TMPDIR, 'cover.jpg')
 CMD_GENERIC_DOWNLOAD = 'curl 2>/dev/null -o '+os.path.join(TMPDIR, 'cover.jpg')+' '
 CMD_CVT_MP3_1 = 'ffmpeg 2>/dev/null -y -map 0 -map 1 -map_metadata 1 -c:a copy -c:v copy '+os.path.join(TMPDIR, 'tmpsong.mp3')+' -i '+os.path.join(TMPDIR, 'cover.jpg')+' -i '
@@ -132,10 +132,11 @@ def processMatchingTrack(track, localFile):
 
 def findMatch(localFile, tracks):
     for track in tracks:
-        videoTitleElems = [track['fullTitle']] + track['fullTitle'].split('-') + track['fullTitle'].split('~')
+        videoTitleElems = [track['fullTitle']] + track['fullTitle'].split('-') + track['fullTitle'].split('—') + track['fullTitle'].split('~')
         for videoTitleElem in videoTitleElems:
-            canonFragment = removeFeats(canonicalizeTitle(videoTitleElem)).strip()
-            if canonFragment == localFile['canonTitle']:
+            canonFragment = canonicalizeTitle(videoTitleElem).strip()
+            featlessCanonFragment = removeFeats(canonFragment).strip()
+            if canonFragment == localFile['canonTitle'] or featlessCanonFragment == localFile['canonTitle']:
                 processMatchingTrack(track, localFile)
                 return True
     return False
@@ -160,22 +161,54 @@ def listYoutubeVideos(url):
         print(e)
         sys.exit(-1)
 
-def getBandcampAlbumTitles(albumUrl):
+def findBandcampArtUrl(html, pos):
+    artClassPos = html.find('id="tralbumArt', pos) # If we are on an album page, this is the only cover art
+    pos = artClassPos + len('id="tralbumArt')
+    if artClassPos == -1:
+        artClassPos = html.find('class="art', pos)
+        pos = artClassPos + len('class="art')
+    if artClassPos == -1:
+        print('Failed to find album art tag! Is our cheap-ass parser broken?')
+        sys.exit(-1)
+    if html[pos:pos+6] == ' empty':
+        print('No album art for '+linkUrl)
+        return None
+    artUrlPos = html.find('src="', pos) + len('src="')
+    artUrl = html[artUrlPos:html.find('"', artUrlPos)]
+    if artUrl == '/img/0.gif':
+        # Lazy loading
+        artUrlPos = html.find('data-original="', pos) + len('data-original="')
+        artUrl = html[artUrlPos:html.find('"', artUrlPos)]
+    return artUrl
+
+def getBandcampAlbumTracks(albumUrl):
     html = urllib.request.urlopen(albumUrl).read().decode('utf-8')
-    titles = []
+    tracks = []
     curpos = 0
+    artUrl = findBandcampArtUrl(html, curpos)
+    if artUrl is None:
+        return tracks
     while True:
-        curpos = html.find('<span itemprop="name">', curpos)
+        curpos = html.find('<span class="track-title" itemprop="name">', curpos)
         if curpos == -1:
             break
-        curpos += len('<span itemprop="name">')
-        titles.append(unescape(html[curpos:html.find('<', curpos)]))
-    return titles
+        curpos += len('<span class="track-title" itemprop="name">')
+        title = unescape(html[curpos:html.find('<', curpos)])
+        tracks.append({
+            'type': 'bandcamp',
+            'fullTitle': title,
+            'canonTitle': canonicalizeTitle(title),
+            'artUrl': artUrl,
+        })
+    return tracks
 
 def listBandcampTracks(url):
     print('Getting Bandcamp track list...')
     baseUrl = url[:url.find('bandcamp.com/')+len('bandcamp.com/')]
     trackList = []
+    if 'bandcamp.com/album/' in url:
+        return getBandcampAlbumTracks(url)
+    
     html = urllib.request.urlopen(url).read().decode('utf-8')
     curpos = 0
     while True:
@@ -184,44 +217,23 @@ def listBandcampTracks(url):
             break
         curpos += len('href="')
         linkUrl = html[curpos:html.find('"', curpos)]
-        trackTitles = []
         if linkUrl.startswith('/track'):
             titlePos = html.find('class="title">', curpos) + len('class="title">')
             if titlePos == -1:
                 print('Failed to get title of track '+linkUrl)
                 continue
             title = unescape(html[titlePos:html.find('<', titlePos)].strip())
-            trackTitles.append(title)
-        elif linkUrl.startswith('/album'):
-            trackTitles.extend(getBandcampAlbumTitles(baseUrl+linkUrl))
-        else:
-            continue
-        
-        artpos = curpos
-        artClassPos = html.find('class="art', artpos)
-        if artClassPos == -1:
-            artClassPos = html.find('id="tralbumArt', 0) # If we are already on an album page, this is the only cover art
-        if artClassPos == -1:
-            print('Failed to find album art tag! Is our cheap-ass parser broken?')
-            sys.exit(-1)
-        artpos = artClassPos + len('class="art')
-        if html[artpos:artpos+6] == ' empty':
-            print('No album art for '+linkUrl)
-            continue
-        artUrlPos = html.find('src="', artpos) + len('src="')
-        artUrl = html[artUrlPos:html.find('"', artUrlPos)]
-        if artUrl == '/img/0.gif':
-            # Lazy loading
-            artUrlPos = html.find('data-original="', artpos) + len('data-original="')
-            artUrl = html[artUrlPos:html.find('"', artUrlPos)]
-        
-        for title in trackTitles:
+            artUrl = findBandcampArtUrl(html, curpos)
+            if artUrl is None:
+                continue
             trackList.append({
                 'type': 'bandcamp',
                 'fullTitle': title,
                 'canonTitle': canonicalizeTitle(title),
                 'artUrl': artUrl,
             })
+        elif linkUrl.startswith('/album'):
+            trackList.extend(getBandcampAlbumTracks(baseUrl+linkUrl))
     return trackList
 
 def listSoundcloudTracks(url):

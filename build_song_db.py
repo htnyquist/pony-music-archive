@@ -19,7 +19,7 @@ from audioread import rawread
 from audioread import gstdec
 
 QUEUE_SIZE = 128
-NUM_THREADS = 24
+NUM_THREADS = 16
 
 # Cutoff frequency search parameters
 FFT_LENGTH = 1024
@@ -177,30 +177,31 @@ db.execute('''CREATE INDEX IF NOT EXISTS idx_artist ON songs(artist)''')
 db.execute('''CREATE TABLE IF NOT EXISTS info (tag text UNIQUE, value text)''')
 db.execute('''INSERT OR REPLACE INTO info VALUES ('songs_rel_path', ?)''', [os.path.relpath(SRC, os.path.dirname(DB_FILENAME))])
 
-print('Looking for removed songs')
-process_removed_songs(db)
+try:
+    print('Looking for removed songs')
+    process_removed_songs(db)
 
-print('Looking for new songs')
+    print('Looking for new songs')
+    for i in range(NUM_THREADS):
+        threads.append(start_thread(worker))
 
-for i in range(NUM_THREADS):
-    threads.append(start_thread(worker))
+    with os.scandir(SRC) as it:
+        db_cur = db.cursor()
+        for entry in it:
+            while artist_queue.qsize() >= QUEUE_SIZE:
+                process_results(db)
+                sleep(2)
+            if entry.is_dir():
+                db_cur.execute('SELECT albums_path, title, format FROM songs WHERE artist=?', [entry.name])
+                rows = db_cur.fetchall()
+                artist_queue.put([entry.name, rows])
 
-with os.scandir(SRC) as it:
-    db_cur = db.cursor()
-    for entry in it:
-        while artist_queue.qsize() >= QUEUE_SIZE:
-            process_results(db)
-            sleep(2)
-        if entry.is_dir():
-            db_cur.execute('SELECT albums_path, title, format FROM songs WHERE artist=?', [entry.name])
-            rows = db_cur.fetchall()
-            artist_queue.put([entry.name, rows])
+    db.commit()
+    db.close()
 
-db.commit()
-db.close()
-
-start_thread(finish_processing_results)
-artist_queue.join()
-results_queue.join()
-
+    start_thread(finish_processing_results)
+    artist_queue.join()
+    results_queue.join()
+except KeyboardInterrupt:
+    pass
 shutil.rmtree(tmpdir, ignore_errors=True)
