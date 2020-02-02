@@ -75,6 +75,12 @@ This is always run (and every problem fixed) before creating a torrent.
 
 Usage: `findbadnames.py <archive folder>`
 
+### autotag.py
+
+This is a semi-automated script that tries to fix files with blank title/artist/album tags.
+For more complex cases, the user is prompted with a possible solution, and those files should be reviewed and updated manually instead if necessary.
+
+Usage: `findbitrate.py <archive folder> [--do-nothing] [--auto-apply-simple] [--no-complex] [--verbose|--quiet]`
 
 ### findbitrate.py
 
