@@ -159,6 +159,16 @@ def folderChecks(srcPath, baseName, baseFileName):
         return showError('startswith_newgrounds', srcPath)
     if '  ' in baseName:
         return showError('double_space', srcPath)
+    if baseName.lower().endswith(' - single') or baseName.lower().endswith('(single)') or baseName.lower().endswith('[single]'):
+        showError('single_in_album_name', srcPath)
+        contents = [name for name in os.listdir(srcPath) if name != '.' and name != '..']
+        if len(contents) == 1:
+            newPath = os.path.join(os.path.dirname(srcPath), contents[0])
+            if not os.path.exists(newPath):
+                print('> AUTO-CORRECTING BY MOVING SINGLE FILE OUTSIDE: '+newPath)
+                os.rename(os.path.join(srcPath, contents[0]), newPath)
+                os.rmdir(srcPath)
+        return False
     return checkFolderDupes(srcPath)
 
 def fileChecks(srcPath, baseName, baseFileName):
