@@ -10,7 +10,7 @@ if len(sys.argv) < 2:
 OUT_DIR = sys.argv[1]
 URL = input('Bandcamp URL: ')
 
-fetchCmd = "curl 2>/dev/null "+URL+" | egrep 'href=\"/(track|album)/' | sed 's@[^\"]*\"\\(/[^/]\+/[^\"]*\\)\".*@\\1@'"
+fetchCmd = "curl 2>/dev/null "+URL+" | egrep 'href=\"/(track|album)/' | sed 's@^.*href=\"\\(/[^/]\+/[^\"]*\\)\".*@\\1@'"
 titles = subprocess.check_output(["sh", "-c", fetchCmd]).decode().strip().split('\n')
 
 track_base_url = URL.replace('/music', '')
