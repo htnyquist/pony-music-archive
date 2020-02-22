@@ -7,6 +7,7 @@ import json
 import queue
 import threading
 import subprocess
+import dlcoverart
 from time import sleep
 
 API_TRACK = "https://pony.fm/api/web/tracks/"
@@ -150,7 +151,7 @@ def downloadTrack(metadata):
         print("Downloading "+str(id)+": "+artist+" - "+title+" ("+format['name']+")")
     else:
         print("Downloading "+str(id)+": "+artist+" - "+title+" ("+format['name']+" "+size+")")
-        
+    
     data = None
     try:
         data = urllib.request.urlopen(getDownloadUrl(id, format)).read()
@@ -173,7 +174,16 @@ def downloadTrack(metadata):
         os.rename(part_path, path)
     except:
         print("Couldn't complete a download for track "+str(id)+", did we accidentally download it twice at the same time?")
-        
+    
+    if 'covers' in metadata and 'normal' in metadata['covers']:
+        if not 'gravatar.com/avatar/' in metadata['covers']['normal'] and not dlcoverart.hasCoverArt(path):
+            dlcoverart.downloadCoverArt({
+                'id': id,
+                'type': 'generic',
+                'artUrl': metadata['covers']['normal'],
+            })
+            dlcoverart.addCoverArt({ 'id': id, 'path': path })
+    
     if CONVERT_TO_OPUS:
         conversionQueue.put({"basepath": basepath, "srcFormat": format})
     writeResumeState(id)

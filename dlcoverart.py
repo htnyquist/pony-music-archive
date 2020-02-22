@@ -13,6 +13,7 @@ import random
 import tempfile
 import shutil
 import soundcloud
+import binascii
 from html import unescape
 from time import sleep
 
@@ -22,11 +23,11 @@ localFiles = []
 TMPDIR=tempfile.mkdtemp(prefix='ponyfm-dlcoverart-tmp')
 CMD_HAS_COVER = 'ffprobe 2>/dev/null -show_streams '
 CMD_YT_DOWNLOAD = 'youtube-dl -i --write-thumbnail --skip-download -o '+os.path.join(TMPDIR, 'coverpre.jpg')+' '
-CMD_YT_CROP = 'convert '+os.path.join(TMPDIR, 'coverpre.jpg')+' -fuzz 5% -trim '+os.path.join(TMPDIR, 'cover.jpg')
-CMD_GENERIC_DOWNLOAD = 'curl 2>/dev/null -o '+os.path.join(TMPDIR, 'cover.jpg')+' '
-CMD_CVT_MP3_1 = 'ffmpeg 2>/dev/null -y -map 0 -map 1 -map_metadata 1 -c:a copy -c:v copy '+os.path.join(TMPDIR, 'tmpsong.mp3')+' -i '+os.path.join(TMPDIR, 'cover.jpg')+' -i '
+CMD_YT_CROP = 'convert '+os.path.join(TMPDIR, 'coverpre.jpg')+' -fuzz 5%% -trim '+os.path.join(TMPDIR, 'cover%s.jpg')
+CMD_GENERIC_DOWNLOAD = 'curl 2>/dev/null -o '+os.path.join(TMPDIR, 'cover%s.jpg')+' '
+CMD_CVT_MP3_1 = 'ffmpeg 2>/dev/null -y -map 0 -map 1 -map_metadata 1 -c:a copy -c:v copy '+os.path.join(TMPDIR, 'tmpsong.mp3')+' -i '+os.path.join(TMPDIR, 'cover%s.jpg')+' -i '
 CMD_CVT_MP3_2 = 'mv '+os.path.join(TMPDIR, 'tmpsong.mp3')+' '
-CMD_CVT_FLAC = 'metaflac --import-picture-from='+os.path.join(TMPDIR, 'cover.jpg')+' '
+CMD_CVT_FLAC = 'metaflac --import-picture-from='+os.path.join(TMPDIR, 'cover%s.jpg')+' '
 LIST_VIDEOS_CMD='youtube-dl --skip-download --youtube-skip-dash-manifest -i 2>/dev/null --get-filename -o "%(id)s %(title)s" '
 VIDEO_BASE_URL = 'https://www.youtube.com/watch?v='
 SOUNDCLOUD_BORROWED_CLIENT_ID = '91f71f725804f4915f4cc95f69fff503' # First result for a public token on Github search!
@@ -90,10 +91,10 @@ def downloadCoverArt(track):
     try:
         if track['type'] == 'youtube':
             subprocess.check_output(CMD_YT_DOWNLOAD+'"'+VIDEO_BASE_URL+track['id']+'"', shell=True)
-            subprocess.check_output(CMD_YT_CROP, shell=True)
+            subprocess.check_output(CMD_YT_CROP % track['id'], shell=True)
             return True
-        elif track['type'] == 'bandcamp' or track['type'] == 'soundcloud':
-            subprocess.check_output(CMD_GENERIC_DOWNLOAD+'"'+track['artUrl']+'"', shell=True)            
+        elif track['type'] == 'bandcamp' or track['type'] == 'soundcloud' or track['type'] == 'generic':
+            subprocess.check_output((CMD_GENERIC_DOWNLOAD % track['id'])+'"'+track['artUrl']+'"', shell=True)            
             return True
         else:
             print('Unknown track type! ('+track['type']+')')
@@ -108,11 +109,11 @@ def addCoverArt(localFile):
     try:
         if songPath.endswith('.mp3'):
             escapedSrcPath = "'"+songPath.replace("'", "'\\''")+"'"
-            subprocess.check_output(CMD_CVT_MP3_1+escapedSrcPath, shell=True)
+            subprocess.check_output((CMD_CVT_MP3_1 % localFile['id'])+escapedSrcPath, shell=True)
             subprocess.check_output(CMD_CVT_MP3_2+escapedSrcPath, shell=True)
         elif songPath.endswith('.flac'):
             escapedSrcPath = "'"+songPath.replace("'", "'\\''")+"'"
-            subprocess.check_output(CMD_CVT_FLAC+escapedSrcPath, shell=True)
+            subprocess.check_output((CMD_CVT_FLAC % localFile['id'])+escapedSrcPath, shell=True)
         else:
             print("Couldn't add cover art to "+songPath+", unsupported file type!")
     except Exception as e:
@@ -122,6 +123,10 @@ def addCoverArt(localFile):
 def processMatchingTrack(track, localFile):
     localPath = localFile['path']
     baseName = localFile['baseName']
+    if 'id' not in track:
+        track['id'] = binascii.b2a_hex(os.urandom(15)).decode()
+    localFile['id'] = track['id']
+    
     if hasCoverArt(localPath):
         print('Already have cover art for '+baseName)
         return
@@ -163,8 +168,9 @@ def listYoutubeVideos(url):
 
 def findBandcampArtUrl(html, pos):
     artClassPos = html.find('id="tralbumArt', pos) # If we are on an album page, this is the only cover art
-    pos = artClassPos + len('id="tralbumArt')
-    if artClassPos == -1:
+    if artClassPos != -1:
+        pos = artClassPos + len('id="tralbumArt')
+    else:
         artClassPos = html.find('class="art', pos)
         pos = artClassPos + len('class="art')
     if artClassPos == -1:
