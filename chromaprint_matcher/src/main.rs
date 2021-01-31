@@ -1,66 +1,39 @@
+mod song;
+use song::*;
+mod matcher;
+use matcher::*;
+
 use std::io::{self, BufRead};
 use std::error::Error;
-use std::cmp::min;
 use rayon::prelude::*;
-use chromaprint;
+use structopt::StructOpt;
 
-const MAX_MATCH_DURATION_DIFF: i32 = 5;
-const MATCH_IMMEDIATE_TRESHOLD: f32 = 0.98;
-const MATCH_PARTIAL_TRESHOLD: f32 = 0.97;
+#[derive(StructOpt)]
+struct Opt
+{
+    #[structopt(short, long)]
+    duration_diff: Option<i32>,
 
-#[derive(Debug)]
-struct Song {
-    pub compressed_print: String,
-    pub print: Vec<i32>,
-    pub duration: i32,
-}
+    #[structopt(short, long)]
+    immediate_threshold: Option<f32>,
 
-impl Song {
-    fn new(line: &str) -> Song {
-        let words: Vec<_> = line.split(' ').collect();
-        assert_eq!(words.len(), 2);
-        let duration = words[0].parse().unwrap();
-        let compressed_print = words[1].to_owned();
-        let print = Song::decode_print(&compressed_print);
-        Song {
-            compressed_print,
-            print,
-            duration,
-        }
-    }
-
-    fn decode_print(print: &str) -> Vec<i32> {
-        chromaprint::Chromaprint::decode(print.as_bytes(), true).unwrap().0
-    }
-}
-
-fn find_fingerprint_match<'a>(song: &'a Song, dst_songs: &'a [Song]) -> (Option<&'a Song>, f32) {
-    let mut best_score = 0.0;
-    let mut best_match: Option<&Song> = None;
-
-    for dst_song in dst_songs.iter() {
-        if (song.duration - dst_song.duration).abs() > MAX_MATCH_DURATION_DIFF {
-            continue;
-        }
-
-        let mut error = 0f32;
-        for (x, y) in song.print.iter().zip(dst_song.print.iter()) {
-            error += (x ^ y).count_ones() as f32;
-        }
-        let min_len = min(song.print.len(), dst_song.print.len()).max(1);
-        let score = 1.0 - error / 32.0 / min_len as f32;
-        if score >= MATCH_IMMEDIATE_TRESHOLD {
-            return (Some(dst_song), score);
-        } else if score >= MATCH_PARTIAL_TRESHOLD && score > best_score {
-            best_score = score;
-            best_match = Some(dst_song);
-        }
-    }
-
-    return (best_match, best_score)
+    #[structopt(short, long)]
+    partial_threshold: Option<f32>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let opt = Opt::from_args();
+    let mut params = MatchParams::default();
+    if let Some(duration_diff) = opt.duration_diff {
+        params.max_match_duration_diff = duration_diff;
+    }
+    if let Some(immediate_threshold) = opt.immediate_threshold {
+        params.match_immediate_threshold = immediate_threshold;
+    }
+    if let Some(partial_threshold) = opt.partial_threshold {
+        params.match_partial_threshold = partial_threshold;
+    }
+
     let mut dst_songs: Vec<String> = Vec::new();
     let mut src_songs: Vec<String> = Vec::new();
 
@@ -82,7 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let src_songs: Vec<_> = src_songs.par_iter().map(|ref s| Song::new(s)).collect();
 
     src_songs.par_iter().for_each(|song| {
-        if let (Some(song_match), score) = find_fingerprint_match(&song, &dst_songs) {
+        if let (Some(song_match), score) = find_fingerprint_match(&song, &dst_songs, &params) {
             println!("{} {} {}", song.compressed_print, song_match.compressed_print, score.to_string());
         }
     });

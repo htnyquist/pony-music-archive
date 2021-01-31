@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 rayon = "1.0"
 chromaprint = "0.1.2"
+structopt = { version = "0.3.21", default-features = false }
