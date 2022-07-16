@@ -10,7 +10,7 @@ from bandcampjson import BandcampJSON
 
 class Bandcamp:
     def __init__(self):
-        self.headers = {'User-Agent': 'bandcamp-dl/ponyfm-archive (forked from https://github.com/iheanyi/bandcamp-dl)'}
+        self.headers = {'User-Agent': 'pone-music-archive (forked from iheanyi/bandcamp-dl)'}
 
     def parse(self, url: str, art: bool=True, lyrics: bool=False, debugging: bool=False) -> dict or None:
         """Requests the page, cherry picks album info
@@ -58,6 +58,10 @@ class Bandcamp:
         except KeyError:
             label = None
 
+        date = ""
+        if album_release is not None:
+            date = str(dt.strptime(album_release, "%d %b %Y %H:%M:%S GMT").year)
+
         album = {
             "tracks": [],
             "title": album_title,
@@ -65,13 +69,13 @@ class Bandcamp:
             "label": label,
             "full": False,
             "art": "",
-            "date": str(dt.strptime(album_release, "%d %b %Y %H:%M:%S GMT").year)
+            "date": date
         }
 
         artist_url = album_json['url'].rpartition('/album/')[0]
         for track in self.tracks:
             if lyrics:
-                if artist_url == "":
+                if artist_url == "" or track['title_link'] is None:
                     track['lyrics'] = self.get_track_lyrics("{}#lyrics".format(album_json['url']))
                 else:
                     track['lyrics'] = self.get_track_lyrics("{}{}#lyrics".format(artist_url, track['title_link']))

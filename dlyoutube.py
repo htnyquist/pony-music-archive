@@ -11,7 +11,7 @@ if len(sys.argv) < 2:
 OUT_DIR = sys.argv[1]
 URL = input('Youtube URL: ')
 
-downloadCmd = "youtube-dl -i -f bestaudio --extract-audio --audio-format mp3 --audio-quality 2 -o '%(title)s.%(ext)s' '"+URL+"'"
+downloadCmd = "yt-dlp -i -f bestaudio --extract-audio --audio-format mp3 --audio-quality 2 -o '%(title)s.%(ext)s' '"+URL+"'"
 try:
     subprocess.check_output(["sh", "-c", downloadCmd]).decode().strip().split('\n')
 except:

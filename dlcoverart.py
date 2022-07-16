@@ -22,7 +22,8 @@ localFiles = []
 
 TMPDIR=tempfile.mkdtemp(prefix='ponyfm-dlcoverart-tmp')
 CMD_HAS_COVER = 'ffprobe 2>/dev/null -show_streams '
-CMD_YT_DOWNLOAD = 'youtube-dl -i --write-thumbnail --skip-download -o '+os.path.join(TMPDIR, 'coverpre.jpg')+' '
+CMD_YT_DOWNLOAD = 'youtube-dl -i --write-thumbnail --skip-download -o '+os.path.join(TMPDIR, 'coverpre')+' '
+CMT_YT_WEBP_TO_JPG = 'ffmpeg 2>/dev/null -y -i '+os.path.join(TMPDIR, 'coverpre.webp')+' '+os.path.join(TMPDIR, 'coverpre.jpg')
 CMD_YT_CROP = 'convert '+os.path.join(TMPDIR, 'coverpre.jpg')+' -fuzz 5%% -trim '+os.path.join(TMPDIR, 'cover%s.jpg')
 CMD_GENERIC_DOWNLOAD = 'curl 2>/dev/null -o '+os.path.join(TMPDIR, 'cover%s.jpg')+' '
 CMD_CVT_MP3_1 = 'ffmpeg 2>/dev/null -y -map 0 -map 1 -map_metadata 1 -c:a copy -c:v copy '+os.path.join(TMPDIR, 'tmpsong.mp3')+' -i '+os.path.join(TMPDIR, 'cover%s.jpg')+' -i '
@@ -91,6 +92,9 @@ def downloadCoverArt(track):
     try:
         if track['type'] == 'youtube':
             subprocess.check_output(CMD_YT_DOWNLOAD+'"'+VIDEO_BASE_URL+track['id']+'"', shell=True)
+            if os.path.exists(os.path.join(TMPDIR, 'coverpre.webp')):
+                subprocess.check_output(CMT_YT_WEBP_TO_JPG, shell=True)
+                os.remove(os.path.join(TMPDIR, 'coverpre.webp'))
             subprocess.check_output(CMD_YT_CROP % track['id'], shell=True)
             return True
         elif track['type'] == 'bandcamp' or track['type'] == 'soundcloud' or track['type'] == 'generic':

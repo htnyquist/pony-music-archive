@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+import os
+import sys
+import shutil
+import subprocess
+import re
+import sqlite3
+from time import sleep
+
+class Song:
+    def __init__(self, songs_root_path, artist, albums_path, song_title, song_format, duration, bitrate, freq_cutoff, has_cover_art, fingerprint):
+        self.artist = artist
+        self.albums_path = albums_path
+        self.title = song_title
+        self.fmt = song_format
+        self.duration = duration
+        self.bitrate = bitrate
+        self.freq_cutoff = freq_cutoff
+        self.has_cover_art = has_cover_art
+        self.fingerprint = fingerprint.decode('utf-8')
+        self.rel_path = os.path.join(self.artist, self.albums_path, self.title+'.'+self.fmt)
+        self.full_path = os.path.join(songs_root_path, self.artist, self.albums_path, self.title+'.'+self.fmt)
+        self.match = None
+        self.match_score = 0.0
+
+def import_songs(db_path):
+    db = sqlite3.connect(db_path)
+    cur = db.cursor()
+    cur.execute("SELECT value FROM info WHERE tag == 'songs_rel_path'")
+    songs_path = os.path.join(os.path.dirname(db_path), cur.fetchone()[0])
+    cur.execute('SELECT DISTINCT * FROM songs')
+
+    fingerprints = {}
+    exact_dup_count = 0
+    for row in cur.fetchall():
+        song = Song(songs_path, *row)
+        if song.fingerprint in fingerprints:
+            exact_dup_count += 1
+            #print(f'# Exact duplicate {song.full_path} --- {fingerprints[song.fingerprint].full_path}')
+        fingerprints[song.fingerprint] = song
+    print(f'{str(exact_dup_count)} duplicates found in {db_path} (exact fingerprint match)')
+
+    cur.close()
+    db.close()
+    return fingerprints
+
+if len(sys.argv) < 3:
+    print('Usage: '+sys.argv[0]+' <old db> <new db>')
+    sys.exit(-1)
+OLD_DB = sys.argv[1]
+NEW_DB = sys.argv[2]
+
+old_songs = import_songs(OLD_DB)
+new_songs = import_songs(NEW_DB)
+
+old_songs_by_path = {}
+new_artists_matches = {}
+new_songs_by_artist = {}
+
+for old_fingerprint in old_songs:
+    old = old_songs[old_fingerprint]
+    old_path = os.path.join(old.artist, old.albums_path, old.title)
+    old_songs_by_path[old_path] = old
+
+matching_count = 0
+same_path_count = 0
+new_count = 0
+for new_fingerprint in new_songs:
+    new = new_songs[new_fingerprint]
+    
+    if new.artist not in new_artists_matches:
+            new_artists_matches[new.artist] = 0
+    
+    if new_fingerprint in old_songs:
+        matching_count += 1
+        new_artists_matches[new.artist] += 1
+        continue
+    
+    new_path = os.path.join(new.artist, new.albums_path, new.title)
+    if new_path in old_songs_by_path:
+        same_path_count += 1
+        new_artists_matches[new.artist] += 1
+        continue
+    
+    if new.artist not in new_songs_by_artist:
+        new_songs_by_artist[new.artist] = []
+    
+    new_songs_by_artist[new.artist].append(new)
+    new_count += 1
+
+for artist in new_songs_by_artist:
+    if new_artists_matches[artist] == 0:
+        print(f'\n# Artist "{artist}" is new (zero songs or collabs in the previous archive), and has {len(new_songs_by_artist[artist])} new songs.')
+    else:
+        print(f'\n# Artist "{artist}" had {new_artists_matches[artist]} songs in the previous archive, and has {len(new_songs_by_artist[artist])} new songs.')
+    for song in new_songs_by_artist[artist]:
+        print(f'Added {song.rel_path}')
+
+print('')
+print(f'In total, there were {matching_count} existing songs found, {same_path_count} songs updated in higher quality, and {new_count} new songs. ', end='')
+print(f'We found {len([artist for artist in new_artists_matches if new_artists_matches[artist]==0])} new artists.')

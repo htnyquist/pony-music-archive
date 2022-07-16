@@ -11,9 +11,11 @@ import scipy
 import numpy
 import acoustid
 import tempfile
+import traceback
 from time import sleep
 from scipy import signal
 from scipy.io import wavfile
+from numpy.lib.scimath import log10
 
 from audioread import rawread
 from audioread import gstdec
@@ -28,17 +30,22 @@ CUTOFF_SEARCH_SEGMENT_WIDTH = 50 # Distance to lookahead for the drop, as a frac
 CUTOFF_MIN_DB_DROP = 15 # If we see a drop this many dB tall in a segment, we found the cutoff
 CUTOFF_LOWEST_LEVEL = +15 # If we reach a level this many dB above the floor, there must not have been a sharp drop, so we cutoff here.
 
+if len(sys.argv) < 3:
+    print('Usage: '+sys.argv[0]+' <archive dir> <db file>')
+    sys.exit(-1)
+SRC = sys.argv[1]
+DB_FILENAME = sys.argv[2]
+
+ARTISTS_PATH = os.path.join(SRC, 'Artists')
+if not os.path.exists(ARTISTS_PATH):
+    print('Invalid archive dir, no Artists folder')
+    sys.exit(-1)
+    
 artist_queue = queue.Queue(QUEUE_SIZE)
 results_queue = queue.Queue(QUEUE_SIZE)
 threads = []
 tempfile.tempdir = '.'
 tmpdir = tempfile.mkdtemp(prefix='pma-build-song-db-tmp')
-
-if len(sys.argv) < 3:
-    print('Usage: '+sys.argv[0]+' <artists dir> <db file>')
-    sys.exit(-1)
-SRC = sys.argv[1]
-DB_FILENAME = sys.argv[2]
 
 def has_cover_art_async(path):
     return subprocess.Popen(['ffprobe', '-show_streams', path], stderr=subprocess.DEVNULL, stdout=subprocess.PIPE)
@@ -74,7 +81,7 @@ def find_song_cutoff_frequency(song_path):
     max_power = numpy.max(power)
     if max_power == 0: # Some songs are mostly empty (e.g. acapellas), we can't meaningfully look for a cutoff
         return None
-    power_db = 10*scipy.log10(power/max_power)
+    power_db = 10*log10(power/max_power)
 
     return frequency_cutoff_search(power_db, freq, int(len(power)/CUTOFF_SEARCH_SEGMENT_WIDTH), CUTOFF_MIN_DB_DROP, CUTOFF_LOWEST_LEVEL)
 
@@ -96,7 +103,7 @@ def process_song(artist, artist_path, albums_path, song_filename):
     results_queue.put([artist, albums_path, song_title, song_format, int(duration), bitrate, freq_cutoff, has_cover_art, fingerprint])
 
 def process_artist(artist, rows):
-    artist_path = os.path.join(SRC, artist)
+    artist_path = os.path.join(ARTISTS_PATH, artist)
     existing_db_entries = []
     for row in rows:
         row_albums_path, row_title, row_format = row
@@ -114,7 +121,8 @@ def process_artist(artist, rows):
                     break
                 except Exception as e:
                     retry += 1
-                    print(e)
+                    print("process_song exception: ", e)
+                    traceback.print_exc()
 
 def worker():
     while True:
@@ -152,7 +160,7 @@ def process_removed_songs(db):
     rows = db_cur.fetchall()
     for row in rows:
         artist, albums_path, title, fmt = row
-        song_path = os.path.join(SRC, artist, albums_path, title+'.'+fmt)
+        song_path = os.path.join(ARTISTS_PATH, artist, albums_path, title+'.'+fmt)
         if not os.path.exists(song_path):
             print('Removing deleted song from DB: '+song_path)
             to_remove.append(row)
@@ -175,7 +183,7 @@ db.execute('''CREATE TABLE IF NOT EXISTS songs (
     )''')
 db.execute('''CREATE INDEX IF NOT EXISTS idx_artist ON songs(artist)''')
 db.execute('''CREATE TABLE IF NOT EXISTS info (tag text UNIQUE, value text)''')
-db.execute('''INSERT OR REPLACE INTO info VALUES ('songs_rel_path', ?)''', [os.path.relpath(SRC, os.path.dirname(DB_FILENAME))])
+db.execute('''INSERT OR REPLACE INTO info VALUES ('songs_rel_path', ?)''', [os.path.relpath(ARTISTS_PATH, os.path.dirname(DB_FILENAME))])
 
 try:
     print('Looking for removed songs')
@@ -185,7 +193,7 @@ try:
     for i in range(NUM_THREADS):
         threads.append(start_thread(worker))
 
-    with os.scandir(SRC) as it:
+    with os.scandir(ARTISTS_PATH) as it:
         db_cur = db.cursor()
         for entry in it:
             while artist_queue.qsize() >= QUEUE_SIZE:

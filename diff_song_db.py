@@ -7,12 +7,13 @@ import re
 import sqlite3
 from time import sleep
 
-# NOTE: DO NOT set to False before checking that the chromaprint matcher is compiled with a very high threshold!
-READONLY = True
-SHOW_UNMATCHED = True
+READONLY = True # NOTE: DO NOT set to False before checking that the chromaprint matcher has a very high threshold!
+CHROMAPRINT_PARTIAL_MATCH_THRESHOLD = 0.98
+SHOW_UNMATCHED = False
+NO_ART_IMPORT = True # If the source is using the "My Little X" cover arts from the MLPMA, we don't want those...
 
 if len(sys.argv) < 3:
-    print('Usage: '+sys.argv[0]+' <imported db> <target db>')
+    print('Usage: '+sys.argv[0]+' <imported db> <target db> [-n]')
     sys.exit(-1)
 SRC_DB = sys.argv[1]
 TARGET_DB = sys.argv[2]
@@ -158,7 +159,7 @@ def import_cover_art(src_path, dst_path, dst_fmt):
     os.remove(cover_path)
 
 def merge_best_of_songs(titles_match, src_song, dst_song):    
-    if not dst_song.has_cover_art and src_song.has_cover_art:
+    if not dst_song.has_cover_art and src_song.has_cover_art and not NO_ART_IMPORT:
         print('> Importing cover art from '+src_song.rel_path+' to '+dst_song.rel_path)
         if check_read_only_mode():
             return
@@ -221,7 +222,7 @@ print(str(len(dst_fingerprints))+' target fingerprints')
 print('Running chromaprint matcher to generate diff')
 
 matcher_stdout = None
-with subprocess.Popen(['./chromaprint_matcher'], stderr=subprocess.PIPE, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True) as matcher:
+with subprocess.Popen(['./chromaprint_matcher', '--partial-threshold', str(CHROMAPRINT_PARTIAL_MATCH_THRESHOLD)], stderr=subprocess.PIPE, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True) as matcher:
     for fingerprint in dst_fingerprints:
         song = dst_fingerprints[fingerprint]
         matcher.stdin.write(f'''{str(song.duration)} {song.fingerprint}\n''')
@@ -261,7 +262,8 @@ for artist in src_artists:
             break
     else:
         src_artists_without_matches.append(artist)
-        print(f'> Source artist {artist} has no matching songs, eligible for bulk import')
+        if SHOW_UNMATCHED:
+            print(f'> Source artist {artist} has no matching songs, eligible for bulk import')
     
 print(f'Found {str(len(src_artists))} source artists, {str(len(src_artists_without_matches))} without any matches')
 

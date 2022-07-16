@@ -1,5 +1,8 @@
-# Clean files in an album from Bandcamp:
-for f in (*.{png,jpg,txt,pdf})(N); do rm $f; done; for f in (*.{flac,mp3})(N); do mv "$f" "`echo $f | sed 's/.* - [0-9]\+ //'`"; done 
+# Clean files in a single artist's album from Bandcamp:
+for f in (*.{png,jpg,txt,pdf})(N); do rm -- "$f"; done; for f in (*.{flac,mp3})(N); do mv -- "$f" "`echo $f | sed 's/.* - [0-9]\+ //'`"; done 
+
+# Clean files in a compilation album from Bandcamp:
+for g in (*.{png,jpg,txt,pdf})(N); do rm -- "$g"; done; for g in (*.{flac,mp3})(N); do mv -- "$g" "`echo $g | sed 's/^\(.*\) - .* - [0-9]\+ /\1 - /'`"; done
 
 # Remove leading artist name from songs
 for m in (*.{flac,mp3})(N); do t=$(echo $m | sed "s/^$(basename $PWD) - //"); mv "$m" "$t"; done
@@ -18,3 +21,7 @@ for t in (*.mp3)(N); do ffmpeg -f mp3 -y -map 0 -map 1 -map_metadata 1 -c:a copy
 
 # Download YT channel or playlist and convert to MP3 V2
 youtube-dl -i -f bestaudio --extract-audio --audio-format mp3 --audio-quality 2 'https://www.youtube.com/channel/UC3DucZUZgJz17XDP7asUsjA/videos' -o '%(title)s.%(ext)s'
+
+# Remove all cover art in direct folder
+fd -tf -d1 -x eyeD3 --remove-all-images
+

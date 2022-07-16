@@ -1,6 +1,6 @@
 # Pony Music Archive scripts
 
-This is a collection of short scripts and helpful tools used to manage the Pony Music Archive, a collection of music over 700GB in size.
+This is a collection of short scripts and helpful tools used to manage the Pony Music Archive, a collection of music over 1TiB in size.
 The archive is released every 6 months as torrents for the raw and different transcode qualities.
 
 These tools help automate tasks like downloading new songs and album art, converting the archive to Opus, finding duplicates and naming issues, and looking for corrupt or low-quality tracks.
@@ -16,8 +16,8 @@ Note that not all scripts need all these dependencies, but if you run into any p
 - `convert` utility from ImageMagick (auto-cropping the cover art)
 - `metaflac` (adding cover art to FLACs)
 - `opusenc` (converting songs to Opus)
-- The `sqlite3` and `acoustid` Python3 packages to build the song database
-- An `audioread` package built from Git master, due to a crippling memory leak in the last release (2.1.6)...
+- The `sqlite3` and `pyacoustid` Python3 packages to build the song database
+- The `audioread` package
 - Basic unix tools: `grep`, `awk` and `file` (misc processing)
 
 ## Release scripts
@@ -64,6 +64,13 @@ Optionally converts songs to Opus on the fly (this feature is deprecated, use th
 
 Usage: `scrape.py <destination folder>`
 
+### scrape_bronytunes.py
+
+Downloads songs from Bronytunes, in either FLAC or MP3.
+Uses a resume file to remember the last downloaded song and resume from there.
+
+Usage: `scrape_bronytunes.py <destination folder>`
+
 ## Maintenance scripts
 
 ### findbadnames.py
@@ -80,7 +87,7 @@ Usage: `findbadnames.py <archive folder>`
 This is a semi-automated script that tries to fix files with blank title/artist/album tags.
 For more complex cases, the user is prompted with a possible solution, and those files should be reviewed and updated manually instead if necessary.
 
-Usage: `findbitrate.py <archive folder> [--do-nothing] [--auto-apply-simple] [--no-complex] [--verbose|--quiet]`
+Usage: `autotag.py <archive folder> [--do-nothing] [--auto-apply-simple] [--no-complex] [--verbose|--quiet]`
 
 ### findbitrate.py
 

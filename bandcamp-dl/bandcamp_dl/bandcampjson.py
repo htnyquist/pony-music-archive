@@ -34,8 +34,12 @@ class BandcampJSON:
     def get_js(self):
         """Get <script> element containing the data we need and return the raw JS"""
         logging.debug(" Grabbing embedded script..")
-        self.js_data = self.body.find("script", {"src": False}, text=re.compile(self.target)).string
+        result = self.body.find("script", {"src": False}, text=re.compile(self.target))
+        if result is None:
+            return False
+        self.js_data = result.string
         self.extract_data(self.js_data)
+        return True
 
     def extract_data(self, js: str):
         """Extract values from JS dictionary
@@ -47,7 +51,8 @@ class BandcampJSON:
     def js_to_json(self):
         """Convert JavaScript dictionary to JSON"""
         logging.debug(" Converting JS to JSON..")
-        self.get_js()
+        if not self.get_js():
+            return
         # Decode with demjson first to reformat keys and lists
         decoded_js = demjson.decode(self.js_data)
         # Encode to make valid JSON, add to list of JSON strings

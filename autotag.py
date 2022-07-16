@@ -226,7 +226,7 @@ def processFolder(parseJob):
                 description = f'Use the most common tag in other tracks of this album: "{newAlbumTag}"'
             else:
                 newAlbumTag = parseJob.folderRelPath.replace('/', ' - ')
-                isComplexDecision = parseJob.folderRelPath.find('/') != -1
+                isComplexDecision = parseJob.folderRelPath.find('/') != -1 or parseJob.folderRelPath == 'Instrumentals' or parseJob.folderRelPath == 'A capellas'
                 description = f'Set the album tag to the folder name: "{newAlbumTag}"'
                 
             metaUpdates = [m.makeUpdateObject('album', newAlbumTag) for m in noAlbumTag]

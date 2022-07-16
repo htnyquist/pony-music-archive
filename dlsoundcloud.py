@@ -86,16 +86,21 @@ def convertWavToFlac(filename):
     escapedFlacFilename = "'"+flacFilename.replace("'", "'\\''")+"'"
     subprocess.check_output('ffmpeg 2>/dev/null -y -i '+escapedFilename+' '+escapedFlacFilename+' && rm '+escapedFilename, shell=True)
 
-def downloadTrack(downloadUrl):
+def downloadTrack(downloadUrl, fullTitle):
     reply = urllib.request.urlopen(downloadUrl+'?client_id='+SOUNDCLOUD_BORROWED_CLIENT_ID)
     disp = reply.getheader('Content-Disposition')
-    filename = track['fullTitle']+'.mp3'
-    if not disp is None:
-        filename = disp[disp.find('"')+1:disp.rfind('"')]
+    if disp == None:
+        ct = reply.getheader('Content-Type')
+        mimeToExt = {'audio/mpeg': 'mp3', 'audio/x-wav': 'wav'}
+        if ct in mimeToExt:
+            filename = fullTitle+'.'+mimeToExt[ct]
+        else:
+            filename = fullTitle+'.???'
+    else:
+        filename = fullTitle + '.' + disp[disp.find('"')+1:disp.rfind('"')].rsplit('.', 1)[1]
     filename = filename.replace('/', '-')
     if filename.startswith(artistName+' - '):
         filename = filename[len(artistName+' - '):]
-    
     flacFilename = baseFileName = os.path.basename(filename).rsplit('.', 1)[0] + '.flac'
     targetFilename = filename
     if filename.endswith('.wav') or os.path.exists(flacFilename):
@@ -132,14 +137,14 @@ tracks = listSoundcloudTracks(client, user)
 
 for track in tracks:
     try:
-        downloadTrack(track['downloadUrl'])
+        downloadTrack(track['downloadUrl'], track['fullTitle'])
         continue
     except Exception as e:
         print('Failed to download track ('+str(e)+'), retrying with stream URL')
         pass
     
     try:
-        downloadTrack(track['streamUrl'])
+        downloadTrack(track['streamUrl'], track['fullTitle'])
     except Exception as e:
         print('Failed to download track "'+track['fullTitle']+'", giving up')
 

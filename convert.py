@@ -143,6 +143,7 @@ def convertToOpus(convertItem):
             metadataFlags = createMetadataFlags(metaOutput)
         except subprocess.CalledProcessError as e:
             print("Failed to extract metadata for "+escapedSrcPath+", ignoring.")
+            print(e)
             pass
 
         coverPath = os.path.join(TMP_DIR, str(random.randint(0, 2**64))+'.png')
@@ -158,6 +159,8 @@ def convertToOpus(convertItem):
 
         devnull=open(os.devnull)
         if subprocess.call(["sh", "-c", convCmd], stdin=devnull):
+            print(coverCmd)
+            print(convCmd)
             print("Conversion returned an error for "+escapedSrcPath+", ignoring!")
         else:
             os.rename(dstPath+'.part', dstPath)
@@ -180,7 +183,7 @@ createFolder(DST_DIR)
 for i in range(NUM_CONVERSION_THREADS):
     conversionThreads.append(startThread(conversionLoop))
 
-for pathit in glob.iglob(os.path.join(SRC_DIR, '**'), recursive=True):
+for pathit in glob.iglob(os.path.join(glob.escape(SRC_DIR), '**'), recursive=True):
     while conversionQueue.qsize() >= CONV_QUEUE_SIZE:
         sleep(0.1)
 
